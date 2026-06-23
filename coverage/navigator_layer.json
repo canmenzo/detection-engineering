@@ -1,0 +1,34 @@
+{
+  "name": "Detection Coverage",
+  "description": "Auto-generated from detections/ \u2014 do not edit by hand.",
+  "versions": {
+    "navigator": "4.9.1",
+    "layer": "4.5",
+    "attack": "16"
+  },
+  "domain": "enterprise-attack",
+  "techniques": [
+    {
+      "techniqueID": "T1027",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1059.001",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#ffffff",
+      "#66b1ff",
+      "#0b5cad"
+    ],
+    "minValue": 0,
+    "maxValue": 1
+  },
+  "legendItems": []
+}

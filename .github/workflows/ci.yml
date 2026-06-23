@@ -1,0 +1,73 @@
+name: detection-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: yamllint rules
+        run: yamllint detections/
+      - name: sigma check
+        run: sigma check detections/
+      - name: metadata + fixture discipline
+        run: python tools/validate_metadata.py
+
+  convert:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: convert to Splunk SPL
+        run: sigma convert -t splunk -p pipelines/splunk.yml detections/ -o out/splunk.spl
+      - name: convert to Sentinel KQL
+        run: sigma convert -t kusto -p pipelines/sentinel.yml detections/ -o out/sentinel.kql
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: install hayabusa
+        run: |
+          HV=2.16.0
+          curl -sSL -o hayabusa.zip "https://github.com/Yamato-Security/hayabusa/releases/download/v${HV}/hayabusa-${HV}-lin-x64-gnu.zip"
+          mkdir -p hayabusa && unzip -q hayabusa.zip -d hayabusa
+          BIN=$(find hayabusa -maxdepth 1 -name 'hayabusa*' -type f | head -n1)
+          chmod +x "$BIN"
+          echo "HAYABUSA_BIN=$PWD/$BIN" >> "$GITHUB_ENV"
+      - name: pytest
+        run: pytest -v
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: [lint, convert, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: generate navigator layer
+        run: python tools/generate_navigator_layer.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: navigator-layer
+          path: coverage/navigator_layer.json

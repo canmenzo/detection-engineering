@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Tooling
+hayabusa*/
+*.log
+
+# Local conversion output
+out/
+*.kql.txt
+*.spl.txt
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Keep fixture dirs but never commit captures from real machines accidentally:
+# fixtures are added explicitly per-rule. Review before committing EVTX.

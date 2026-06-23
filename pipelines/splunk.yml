@@ -1,0 +1,13 @@
+name: splunk-process-creation
+priority: 50
+transformations:
+  - id: sysmon_process_creation_fieldmap
+    type: field_name_mapping
+    mapping:
+      Image: process_path
+      OriginalFileName: process_name
+      CommandLine: process
+    rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: windows

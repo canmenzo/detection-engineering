@@ -1,0 +1,21 @@
+name: sentinel-process-creation
+priority: 50
+transformations:
+  - id: defender_process_creation_fieldmap
+    type: field_name_mapping
+    mapping:
+      Image: FolderPath
+      OriginalFileName: ProcessVersionInfoOriginalFileName
+      CommandLine: ProcessCommandLine
+    rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: windows
+  - id: set_table_devicelogonevents
+    type: set_state
+    key: table
+    val: DeviceProcessEvents
+    rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: windows
