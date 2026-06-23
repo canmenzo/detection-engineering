@@ -1,11 +1,11 @@
-# Pinned during the build — CONFIRM CURRENT VERSIONS with `pip index versions <pkg>`
-# before pinning hard. The Microsoft backend has been renamed historically
-# (was microsoft365defender) and is now the Kusto backend; verify at install.
+# Versions confirmed against PyPI 2026-06-23.
+# Microsoft/Sentinel backend is pysigma-backend-kusto (the old
+# pysigma-backend-microsoft365defender is deprecated/consolidated into it).
 
-pysigma>=0.11,<0.12
-sigma-cli>=1.0,<2.0
-pysigma-backend-splunk>=1.1,<2.0
-pysigma-backend-kusto>=0.4            # Sentinel / Microsoft 365 Defender (KQL)
+pysigma>=1.3,<2.0
+sigma-cli>=3.0,<4.0
+pysigma-backend-splunk>=2.1,<3.0
+pysigma-backend-kusto>=1.0,<2.0      # Sentinel / Microsoft 365 Defender (KQL)
 pyyaml>=6.0
 pytest>=8.0
 yamllint>=1.35
