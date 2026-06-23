@@ -32,7 +32,9 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt
       - name: convert to Splunk SPL
-        run: sigma convert -t splunk -p pipelines/splunk.yml detections/ -o out/splunk.spl
+        run: |
+          mkdir -p out
+          sigma convert -t splunk -p pipelines/splunk.yml detections/ -o out/splunk.spl
       - name: convert to Sentinel KQL
         run: sigma convert -t kusto -p pipelines/sentinel.yml detections/ -o out/sentinel.kql
 
