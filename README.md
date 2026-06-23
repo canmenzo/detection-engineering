@@ -35,11 +35,13 @@ pip install -r requirements.txt
 
 python tools/validate_metadata.py          # metadata + fixture discipline
 python tools/generate_navigator_layer.py   # writes coverage/navigator_layer.json
-pytest -v                                   # needs the hayabusa binary on PATH
+pytest -v                                   # fetches pinned samples, runs Hayabusa
 ```
 
 Hayabusa is a single binary from [Yamato Security](https://github.com/Yamato-Security/hayabusa);
-download a release and put it on `PATH` (or set `HAYABUSA_BIN`).
+download a release and point `HAYABUSA_BIN` at it (keep it next to its bundled
+`rules/config`). Tests download pinned public EVTX samples on first run and cache
+them locally — see [`docs/adr/0002`](docs/adr/0002-fetch-pinned-samples.md).
 
 ## The detection lifecycle
 

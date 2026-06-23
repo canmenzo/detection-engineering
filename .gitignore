@@ -10,6 +10,9 @@ venv/
 hayabusa*/
 *.log
 
+# Fetched test samples (pinned in sample_sources.yml, not vendored — see ADR 0002)
+tests/.sample_cache/
+
 # Local conversion output
 out/
 *.kql.txt

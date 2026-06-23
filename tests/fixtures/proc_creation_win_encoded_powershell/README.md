@@ -1,20 +1,15 @@
 # Fixtures — proc_creation_win_encoded_powershell
 
-Drop two EVTX files here:
+This Sysmon (EID 1) process-creation rule is currently **conversion-only**
+(listed in `tests/conversion_only.txt`): it is validated by `sigma check` and
+SPL/KQL conversion in CI, but has no EVTX unit test because no public Sysmon
+EID 1 sample containing `powershell -enc` is available, and a lab capture would
+embed machine PII.
 
-- `true_positive.evtx` — must contain a process-creation event (Sysmon EID 1 or
-  Security EID 4688) where `powershell.exe` runs with `-EncodedCommand`/`-enc`.
-- `benign.evtx` — normal Windows activity that must **not** trigger the rule.
+The same behavior **is** unit-tested via the ScriptBlock (EID 4104) rule
+`posh_ps_susp_encoded_powershell_scriptblock`, whose `sample_sources.yml` pins a
+real public Invoke-Obfuscation sample.
 
-## Where to get them
-
-- **True positive:** run the matching [Atomic Red Team](https://github.com/redcanaryco/atomic-red-team)
-  test for T1059.001 (encoded command) on a lab VM with Sysmon installed, then
-  export the relevant window of `Microsoft-Windows-Sysmon/Operational`. Or pull a
-  labeled sample from [EVTX-ATTACK-SAMPLES](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES).
-- **Benign:** a short clean capture of ordinary Windows usage from the same log
-  channel.
-
-Keep fixtures small and free of personal data — scrub hostnames/usernames if a
-capture came from a real machine. These are committed binaries; do not include
-anything sensitive.
+To promote this rule to fully-tested: add a `sample_sources.yml` here pointing at
+a Sysmon EID 1 `powershell -enc` EVTX (lab capture, PII scrubbed) and remove the
+stem from `tests/conversion_only.txt`.

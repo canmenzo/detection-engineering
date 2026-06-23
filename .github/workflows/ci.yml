@@ -47,13 +47,14 @@ jobs:
       - run: pip install -r requirements.txt
       - name: install hayabusa
         run: |
-          HV=2.16.0
+          HV=3.9.0
           curl -sSL -o hayabusa.zip "https://github.com/Yamato-Security/hayabusa/releases/download/v${HV}/hayabusa-${HV}-lin-x64-gnu.zip"
           mkdir -p hayabusa && unzip -q hayabusa.zip -d hayabusa
-          BIN=$(find hayabusa -maxdepth 1 -name 'hayabusa*' -type f | head -n1)
+          # keep the binary alongside its bundled rules/config (conftest runs from here)
+          BIN=$(find hayabusa -name 'hayabusa-*-lin-*' -type f | head -n1)
           chmod +x "$BIN"
           echo "HAYABUSA_BIN=$PWD/$BIN" >> "$GITHUB_ENV"
-      - name: pytest
+      - name: pytest (fetches pinned samples, runs Hayabusa)
         run: pytest -v
 
   coverage:

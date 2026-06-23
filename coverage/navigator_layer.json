@@ -10,14 +10,14 @@
   "techniques": [
     {
       "techniqueID": "T1027",
-      "score": 1,
-      "comment": "1 detection",
+      "score": 2,
+      "comment": "2 detections",
       "enabled": true
     },
     {
       "techniqueID": "T1059.001",
-      "score": 1,
-      "comment": "1 detection",
+      "score": 2,
+      "comment": "2 detections",
       "enabled": true
     }
   ],
@@ -28,7 +28,7 @@
       "#0b5cad"
     ],
     "minValue": 0,
-    "maxValue": 1
+    "maxValue": 2
   },
   "legendItems": []
 }

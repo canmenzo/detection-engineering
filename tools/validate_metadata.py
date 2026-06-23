@@ -20,6 +20,7 @@ import yaml
 REPO = Path(__file__).resolve().parents[1]
 DETECTIONS = REPO / "detections"
 FIXTURES = REPO / "tests" / "fixtures"
+CONVERSION_ONLY = REPO / "tests" / "conversion_only.txt"
 
 REQUIRED_FIELDS = [
     "title", "id", "status", "description", "references", "author",
@@ -36,11 +37,27 @@ def has_technique_tag(tags) -> bool:
     )
 
 
+def _conversion_only() -> set[str]:
+    if not CONVERSION_ONLY.exists():
+        return set()
+    out = set()
+    for line in CONVERSION_ONLY.read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            out.add(line)
+    return out
+
+
 def has_fixture(rule_path: Path) -> bool:
-    folder = FIXTURES / rule_path.stem
-    if not folder.is_dir():
+    """A rule satisfies the test gate if it has a sample manifest with at least
+    one pinned sample, or is explicitly listed as conversion-only."""
+    if rule_path.stem in _conversion_only():
+        return True
+    manifest = FIXTURES / rule_path.stem / "sample_sources.yml"
+    if not manifest.is_file():
         return False
-    return any(folder.iterdir())
+    doc = yaml.safe_load(manifest.read_text(encoding="utf-8")) or {}
+    return bool(doc.get("samples"))
 
 
 def validate(rule_path: Path) -> list[str]:
@@ -61,7 +78,8 @@ def validate(rule_path: Path) -> list[str]:
 
     if not has_fixture(rule_path):
         errors.append(
-            f"no test fixture: expected files in tests/fixtures/{rule_path.stem}/"
+            f"no test fixture: add tests/fixtures/{rule_path.stem}/sample_sources.yml "
+            f"with >=1 pinned sample, or list '{rule_path.stem}' in tests/conversion_only.txt"
         )
     return errors
 

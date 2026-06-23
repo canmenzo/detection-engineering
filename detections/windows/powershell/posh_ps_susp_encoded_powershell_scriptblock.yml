@@ -1,0 +1,38 @@
+title: Suspicious Encoded or Obfuscated PowerShell ScriptBlock
+id: 9c2e7a14-5b3d-4e6f-8a91-2d4c6b8e1f03
+status: experimental
+description: >
+  Detects PowerShell ScriptBlock logging (EID 4104) containing encoding and
+  obfuscation primitives commonly emitted by Invoke-Obfuscation and malware
+  loaders (Emotet, credential phishers): base64 decoding, char-array
+  reconstruction, integer decoding, and -bxor deobfuscation. These are rare in
+  legitimate interactive use and are a strong signal of staged/obfuscated payloads.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1027/
+  - https://github.com/danielbohannon/Invoke-Obfuscation
+author: Can Ozmen
+date: 2026-06-23
+modified: 2026-06-23
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.t1027
+logsource:
+  product: windows
+  category: ps_script
+  definition: 'Requires PowerShell Script Block Logging (EID 4104)'
+detection:
+  selection:
+    ScriptBlockText|contains:
+      - 'FromBase64String'
+      - '-bxor'
+      - '[char['
+      - 'char]'
+      - '-join'
+      - '[Convert]::ToInt'
+  condition: selection
+falsepositives:
+  - Installer and packaging scripts that legitimately reconstruct strings from
+    byte arrays. Baseline known-good script hashes before alerting at high severity.
+level: high

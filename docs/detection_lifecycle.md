@@ -8,14 +8,15 @@
    full metadata, including at least one `attack.tXXXX` tag. Follow the
    `<logsource>_<platform>_<short_description>.yml` naming convention.
 
-3. **Build fixtures.** Create `tests/fixtures/<rule_stem>/`:
-   - `true_positive.evtx` — telemetry of the behavior firing (Atomic Red Team run
-     or a labeled EVTX-ATTACK-SAMPLES capture).
-   - `benign.evtx` — clean activity that must not trigger the rule.
+3. **Pin test samples.** Create `tests/fixtures/<rule_stem>/sample_sources.yml`
+   listing public EVTX samples by `repo + commit + path + sha256`, each tagged
+   `expect: fire` (true positive) or `expect: silent` (must not fire). Samples
+   are fetched at test time, not vendored — see `docs/adr/0002`. Rules that can't
+   be EVTX-tested are declared in `tests/conversion_only.txt`.
 
-4. **Test.** `pytest` runs Hayabusa against both fixtures: the TP must produce a
-   detection, the benign must produce none. A rule that fires on benign telemetry
-   is a failing build, not a shipped detection.
+4. **Test.** `pytest` downloads the pinned samples and runs Hayabusa against the
+   rule: `fire` samples must produce a hit, `silent` samples must produce none. A
+   rule that fires on a `silent` sample is a failing build, not a shipped detection.
 
 5. **Validate conversion.** `sigma convert` to KQL (Sentinel) and SPL (Splunk)
    using `pipelines/` proves the rule is syntactically valid against real backends.
