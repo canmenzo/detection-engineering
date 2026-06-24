@@ -70,7 +70,11 @@ jobs:
       - run: pip install -r requirements.txt
       - name: generate navigator layer
         run: python tools/generate_navigator_layer.py
+      - name: render coverage matrix
+        run: python tools/generate_coverage_png.py
       - uses: actions/upload-artifact@v4
         with:
-          name: navigator-layer
-          path: coverage/navigator_layer.json
+          name: coverage
+          path: |
+            coverage/navigator_layer.json
+            coverage/coverage.png

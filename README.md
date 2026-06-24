@@ -24,7 +24,7 @@ a detection is only "done" when it's tested, mapped, and merged.
         │
         ├── Hayabusa + pytest ──── TP fixture must fire, benign fixture must not
         │
-        └── generate_navigator_layer.py ── ATT&CK Navigator coverage map
+        └── coverage map ───────── coverage.png matrix + ATT&CK Navigator layer
 ```
 
 ## Run it locally
@@ -34,6 +34,7 @@ python -m venv .venv && .venv\Scripts\activate   # Windows
 pip install -r requirements.txt
 
 python tools/validate_metadata.py          # metadata + fixture discipline
+python tools/generate_coverage_png.py      # writes coverage/coverage.png
 python tools/generate_navigator_layer.py   # writes coverage/navigator_layer.json
 pytest -v                                   # fetches pinned samples, runs Hayabusa
 ```
@@ -51,5 +52,12 @@ Full walkthrough in [`docs/detection_lifecycle.md`](docs/detection_lifecycle.md)
 
 ## Coverage
 
-See [`coverage/navigator_layer.json`](coverage/navigator_layer.json) — load it in
-the [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) to view.
+The matrix at the top is rendered directly from the rule corpus by
+[`tools/generate_coverage_png.py`](tools/generate_coverage_png.py) — no external
+service needed; it regenerates on every commit.
+
+For an interactive view, [`coverage/navigator_layer.json`](coverage/navigator_layer.json)
+can be loaded in the [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/)
+("Open Existing Layer" → "Upload from local"). The layer pins `attack: 16`; if the
+hosted Navigator has moved to a newer ATT&CK release it may refuse the file, which
+is why the committed PNG above is the canonical, dependency-free view.
