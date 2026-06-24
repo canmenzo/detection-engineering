@@ -4,6 +4,8 @@
 > Every Sigma rule ships with fixtures proving it fires on the attack and stays
 > silent on benign activity. CI re-runs everything on every commit.
 
+**[🔎 Live dashboard →](https://canmenzo.github.io/detection-engineering/)** — browsable, filterable view of every detection and its test status.
+
 ![ATT&CK coverage](coverage/coverage.png)
 
 ## Why this exists
@@ -36,6 +38,7 @@ pip install -r requirements.txt
 python tools/validate_metadata.py          # metadata + fixture discipline
 python tools/generate_coverage_png.py      # writes coverage/coverage.png
 python tools/generate_navigator_layer.py   # writes coverage/navigator_layer.json
+python tools/generate_dashboard.py         # writes site/index.html (the live dashboard)
 pytest -v                                   # fetches pinned samples, runs Hayabusa
 ```
 
