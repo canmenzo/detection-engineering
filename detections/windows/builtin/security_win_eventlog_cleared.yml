@@ -1,0 +1,29 @@
+title: Windows Security Event Log Cleared
+id: 3a7d1e92-6c4b-4f18-9e2a-8b5c1d4f7a06
+status: experimental
+description: >
+  Detects clearing of the Windows Security event log (EID 1102). Attackers wipe
+  logs to destroy evidence of intrusion after credential access or lateral
+  movement. Legitimate clears are rare and should be attributable to a known
+  maintenance window or admin action.
+references:
+  - https://attack.mitre.org/techniques/T1070/001/
+  - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=1102
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.defense_evasion
+  - attack.t1070.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 1102
+  condition: selection
+falsepositives:
+  - Scheduled log archival or SIEM forwarder maintenance that rotates logs.
+    Correlate the SubjectUserName against known administrators and maintenance
+    windows before escalating.
+level: high

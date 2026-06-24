@@ -1,0 +1,9 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+samples:
+  - name: true_positive
+    expect: fire          # 4662: Mimikatz DCSync requesting DS-Replication-Get-Changes
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0006-Credential Access/T1003-Credential dumping/ID4662-DCsync attack using Mimikatz.evtx
+    sha256: 4139591E6C943BF46DB2D1D05476DF5B5336B368305B3DEB3EE09E37E2D439A7

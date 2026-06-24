@@ -1,0 +1,42 @@
+title: Microsoft Defender Tampering via PowerShell
+id: 0b7d3e95-4c2a-4f61-8d97-1a6e5b2c4f08
+status: experimental
+description: >
+  Detects PowerShell ScriptBlock activity (EID 4104) that weakens Microsoft
+  Defender: adding scan exclusions (ExclusionPath/Extension/Process), disabling
+  real-time or behavior monitoring, or setting the default threat action to allow.
+  Attackers blind Defender via Set-MpPreference/Add-MpPreference before dropping or
+  executing payloads.
+references:
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://learn.microsoft.com/en-us/powershell/module/defender/set-mppreference
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.defense_evasion
+  - attack.t1562.001
+logsource:
+  product: windows
+  category: ps_script
+  definition: 'Requires PowerShell Script Block Logging (EID 4104)'
+detection:
+  selection_cmdlet:
+    ScriptBlockText|contains:
+      - 'Set-MpPreference'
+      - 'Add-MpPreference'
+  selection_action:
+    ScriptBlockText|contains:
+      - 'Exclusion'
+      - 'DisableRealtimeMonitoring'
+      - 'DisableBehaviorMonitoring'
+      - 'DisableIOAVProtection'
+      - 'DisableScriptScanning'
+      - 'MAPSReporting 0'
+      - 'SubmitSamplesConsent 0'
+  condition: selection_cmdlet and selection_action
+falsepositives:
+  - Endpoint management tooling that programmatically configures Defender
+    exclusions. Baseline managed exclusion paths and alert on ad-hoc changes from
+    interactive sessions.
+level: high

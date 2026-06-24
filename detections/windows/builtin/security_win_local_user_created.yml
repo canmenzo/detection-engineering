@@ -1,0 +1,29 @@
+title: Local User Account Created
+id: 2c9f6b34-1a7d-4e58-9c2b-3d8e5a1f6b29
+status: experimental
+description: >
+  Detects creation of a new user account (EID 4720). Adversaries create local or
+  domain accounts to establish persistence and maintain access independent of any
+  compromised credential. Pair with group-membership changes (4732/4728) to spot
+  freshly created accounts being granted privileges.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+  - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=4720
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.persistence
+  - attack.t1136.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4720
+  condition: selection
+falsepositives:
+  - Help-desk and provisioning workflows create accounts routinely. Baseline the
+    creating account (SubjectUserName) and alert on creation outside known
+    provisioning systems or by recently compromised accounts.
+level: medium

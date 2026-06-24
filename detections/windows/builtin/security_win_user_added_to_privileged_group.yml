@@ -1,0 +1,36 @@
+title: Member Added to Privileged Local Group
+id: 6a2e9c47-3b1d-4f86-9d52-7e4c1a8b3f60
+status: experimental
+description: >
+  Detects a member being added to a privileged built-in local group (EID 4732):
+  Administrators, Backup Operators, Remote Desktop Users, or Distributed COM
+  Users. Adding a freshly created or low-privilege account to these groups is a
+  common persistence and privilege-escalation step. Correlate with 4720 (account
+  creation) to catch create-then-elevate sequences.
+references:
+  - https://attack.mitre.org/techniques/T1098/
+  - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=4732
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1098
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4732
+    TargetSid:
+      - 'S-1-5-32-544'   # Administrators
+      - 'S-1-5-32-551'   # Backup Operators
+      - 'S-1-5-32-555'   # Remote Desktop Users
+      - 'S-1-5-32-562'   # Distributed COM Users
+  condition: selection
+falsepositives:
+  - Legitimate onboarding of administrators or backup operators. Baseline the
+    membership-change source (SubjectUserName) and alert on additions outside
+    IAM/provisioning workflows or affecting recently created accounts.
+level: high

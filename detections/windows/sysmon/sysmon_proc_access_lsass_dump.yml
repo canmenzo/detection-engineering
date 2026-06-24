@@ -1,0 +1,36 @@
+title: LSASS Process Access with Credential-Dump Access Mask
+id: 3e9c1b74-6a2d-4d85-b3d1-7c4e2a9f6b50
+status: experimental
+description: >
+  Detects a process opening a handle to lsass.exe with an access mask sufficient to
+  read process memory (Sysmon EID 10). Credential dumpers such as Mimikatz,
+  ProcDump, comsvcs.dll MiniDump, and LSASSY request VM_READ/QUERY_INFORMATION on
+  LSASS to extract plaintext credentials, NT hashes, and Kerberos tickets.
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+  - https://github.com/gentilkiwi/mimikatz
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.credential_access
+  - attack.t1003.001
+logsource:
+  product: windows
+  category: process_access
+detection:
+  selection:
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess:
+      - '0x1010'
+      - '0x1410'
+      - '0x1418'
+      - '0x1438'
+      - '0x143a'
+      - '0x1fffff'
+  condition: selection
+falsepositives:
+  - Legitimate security tooling (EDR, AV) and some Windows components read LSASS.
+    Baseline known SourceImage paths (system AV, EDR sensor) and alert on access
+    from user-writable or unsigned binaries.
+level: high

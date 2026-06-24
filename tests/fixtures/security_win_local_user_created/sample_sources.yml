@@ -1,0 +1,9 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+samples:
+  - name: true_positive
+    expect: fire          # 4720: a local user account was created
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0003-Persistence/T1136-Create account/ID4720-Local user created.evtx
+    sha256: 72BCB609FD38DB07CA8E7ADD09CAF26EBFEF806ECD433230E5723960948DBAB3

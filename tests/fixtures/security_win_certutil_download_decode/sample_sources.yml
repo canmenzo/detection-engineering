@@ -1,0 +1,9 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+samples:
+  - name: true_positive
+    expect: fire          # 4688: certutil -urlcache -split -f <url> (LOLBIN download)
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0005-Defense Evasion/T1140-Deobfuscate-Decode Files or Information/ID4688-Certutil download.evtx
+    sha256: E56414F341E24FF2CF3CF53C3377034897C91D821E69B6E8BF8B0F41EFA68D7D

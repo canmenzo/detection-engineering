@@ -1,0 +1,11 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+# The same file also contains AES (0x12) machine-account 4769 requests, which the
+# rule's filters correctly ignore — only the RC4 service-account ticket matches.
+samples:
+  - name: true_positive
+    expect: fire          # 4769: RC4 (0x17) TGS for service account Svc-SQL-DB01
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0006-Credential Access/T1558-Steal or Forge Kerberos Tickets/ID4769-Kerberoast ticket with low encryption.evtx
+    sha256: 2C0360611FA5F43738E213638CF01A73C7701D8DDF510A3A03045A277739968A
