@@ -33,6 +33,15 @@ pySigma + sigma-cli (convert/check), pySigma backends (splunk, kusto — verify
 package names at install), Hayabusa (EVTX testing), pytest, yamllint.
 
 ## Status
-Phase 0 scaffolded: one complete detection (encoded PowerShell) + glue scripts +
-test harness + CI. EVTX fixtures still need to be added (see fixture READMEs).
-Backends not yet pip-installed — confirm current package names before installing.
+Phase 2 (breadth) in progress: 13 detections across Execution, Persistence,
+Privilege Escalation, Defense Evasion, Credential Access, and C2 — 14 ATT&CK
+techniques. Every rule is fixture-backed (pinned public EVTX) and verified with
+Hayabusa; `pytest` is green (13/13), `sigma check`/convert/metadata gate all pass.
+
+Note on logsource: Hayabusa maps `category: process_creation` to Sysmon EID 1, so
+4688 Security-log samples won't match those. Rules tested on Security-log samples
+are authored as `service: security` with native fields (EventID + NewProcessName /
+CommandLine / TargetSid / Properties), mirroring Sigma-HQ's windows/builtin/security
+tree. `category: ps_script` (4104) and `category: process_access` (Sysmon 10) map
+fine. Use scratchpad probe.py / dump.py pattern to verify a new rule fires before
+committing.

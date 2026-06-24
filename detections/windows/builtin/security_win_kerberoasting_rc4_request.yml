@@ -1,0 +1,37 @@
+title: Kerberoasting - RC4 Service Ticket Request
+id: 1d6a3c92-8e4f-4b27-9a51-2c7d4e8b6f13
+status: experimental
+description: >
+  Detects a likely Kerberoasting attack: a TGS (service ticket) request (EID 4769)
+  for a user-based service account encrypted with legacy RC4-HMAC (0x17). Attackers
+  request RC4 tickets for SPN-bearing accounts so the resulting blob can be cracked
+  offline to recover the service-account password. Machine accounts and krbtgt are
+  excluded; modern environments should use AES, making RC4 requests for service
+  accounts anomalous.
+references:
+  - https://attack.mitre.org/techniques/T1558/003/
+  - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=4769
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.credential_access
+  - attack.t1558.003
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4769
+    TicketEncryptionType: '0x17'
+    Status: '0x0'
+  filter_machine:
+    ServiceName|endswith: '$'
+  filter_krbtgt:
+    ServiceName: 'krbtgt'
+  condition: selection and not 1 of filter_*
+falsepositives:
+  - Legacy applications that still negotiate RC4 for their service accounts.
+    Baseline which SPNs legitimately use RC4 and alert on new or high-volume
+    requests, especially many distinct SPNs from one source in a short window.
+level: high

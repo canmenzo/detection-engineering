@@ -1,0 +1,11 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+# The file also adds the member to "Users" (S-1-5-32-545), which the rule
+# correctly ignores; only the Administrators + Backup Operators adds match.
+samples:
+  - name: true_positive
+    expect: fire          # 4732: account added to Administrators and Backup Operators
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0003-Persistence/T1098.xxx-Account manipulation/ID4732-User added to local admin groups.evtx
+    sha256: 0D546FC62FB7FA69D9038C58ECFF31EB65D3399DCFE955620CC42CB062E13F4A

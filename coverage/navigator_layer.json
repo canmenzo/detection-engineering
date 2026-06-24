@@ -9,15 +9,87 @@
   "domain": "enterprise-attack",
   "techniques": [
     {
+      "techniqueID": "T1003.001",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1003.006",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
       "techniqueID": "T1027",
       "score": 2,
       "comment": "2 detections",
       "enabled": true
     },
     {
+      "techniqueID": "T1053.005",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
       "techniqueID": "T1059.001",
       "score": 2,
       "comment": "2 detections",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1070.001",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1098",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1105",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1136.001",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1140",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1543.003",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1558.003",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1562.001",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1562.004",
+      "score": 1,
+      "comment": "1 detection",
       "enabled": true
     }
   ],

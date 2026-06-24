@@ -1,0 +1,9 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+samples:
+  - name: true_positive
+    expect: fire          # 4697: Metasploit payload deployed as a new Windows service
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0003-Persistence/T1543.003-Create or Modify System Process-Windows Service/ID4697-MSF payload deployed via service.evtx
+    sha256: C9F96F42FE02368FFC8A881548CC9EE9980B7F326DE1A018935C80806B1351EF

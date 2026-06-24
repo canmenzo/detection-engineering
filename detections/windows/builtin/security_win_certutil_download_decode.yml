@@ -1,0 +1,39 @@
+title: Certutil Download or Decode via Command Line
+id: 5e1b8c47-2a9d-4c63-b7f1-6d3e9a2c5b08
+status: experimental
+description: >
+  Detects certutil.exe used as a living-off-the-land download/decode utility in
+  process-creation auditing (EID 4688): -urlcache / -verifyctl to pull a remote
+  file, or -decode/-encode to unpack a staged payload. Certutil is a signed
+  Microsoft binary, so attackers abuse it to retrieve and deobfuscate tooling
+  while blending into normal admin activity.
+references:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://attack.mitre.org/techniques/T1140/
+  - https://lolbas-project.github.io/lolbas/Binaries/Certutil/
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.defense_evasion
+  - attack.command_and_control
+  - attack.t1105
+  - attack.t1140
+logsource:
+  product: windows
+  service: security
+  definition: 'Requires Audit Process Creation with command line included (EID 4688)'
+detection:
+  selection:
+    EventID: 4688
+    NewProcessName|endswith: '\certutil.exe'
+    CommandLine|contains:
+      - 'urlcache'
+      - 'verifyctl'
+      - 'decode'
+      - 'encode'
+  condition: selection
+falsepositives:
+  - Certificate management scripts that legitimately use certutil -encode/-decode.
+    Baseline by parent process and the URL/file argument.
+level: high

@@ -1,0 +1,9 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+samples:
+  - name: true_positive
+    expect: fire          # 4104: Set-MpPreference -ExclusionPath (Defender exclusion)
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0005-Defense Evasion/T1562.001-Impair Defenses-Disable or Modify tool/ID800-4103-4104 Defender exclusion added (PowerShell).evtx
+    sha256: B5C61A1DD14629C8ACB98A258837524B5FF0AF4ACCA3D48C8B46E3B8C9F45A4F

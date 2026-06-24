@@ -1,0 +1,36 @@
+title: Active Directory Replication from Non-Machine Account (DCSync)
+id: 4f8b2d16-7c3a-4e95-a1d8-6b2e9c5f3a41
+status: experimental
+description: >
+  Detects a DCSync attack: a security principal that is not a domain controller
+  requests directory-replication rights (EID 4662 referencing the
+  DS-Replication-Get-Changes control access rights). Mimikatz lsadump::dcsync and
+  Impacket secretsdump abuse these rights to pull password hashes (incl. krbtgt)
+  for the entire domain without touching a DC's disk.
+references:
+  - https://attack.mitre.org/techniques/T1003/006/
+  - https://blog.netwrix.com/2021/11/30/what-is-dcsync-an-introduction/
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.credential_access
+  - attack.t1003.006
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4662
+    Properties|contains:
+      - '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2'   # DS-Replication-Get-Changes
+      - '1131f6ad-9c07-11d1-f79f-00c04fc2dcd2'   # DS-Replication-Get-Changes-All
+      - '89e95b76-444d-4c62-991a-0facbeda640c'   # Get-Changes-In-Filtered-Set
+  filter_machine:
+    SubjectUserName|endswith: '$'
+  condition: selection and not filter_machine
+falsepositives:
+  - Azure AD Connect / directory-sync service accounts legitimately hold
+    replication rights. Allowlist those specific accounts by SID, then alert on
+    any other principal requesting these rights.
+level: critical

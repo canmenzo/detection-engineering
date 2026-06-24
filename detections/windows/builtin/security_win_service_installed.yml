@@ -1,0 +1,31 @@
+title: New Windows Service Installed
+id: 8d1a4e63-5b2c-49f7-a3d6-7c9b2e1f4a85
+status: experimental
+description: >
+  Detects installation of a new Windows service (EID 4697). Service creation is a
+  classic persistence and privilege-escalation vector — PsExec, SMBexec, Cobalt
+  Strike and Mimikatz drivers all register services that execute as SYSTEM.
+  Services whose image path is a script interpreter, a temp/ADMIN$ path, or a
+  random-looking name warrant investigation.
+references:
+  - https://attack.mitre.org/techniques/T1543/003/
+  - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=4697
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1543.003
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4697
+  condition: selection
+falsepositives:
+  - Legitimate software installs and driver updates register services. Baseline
+    ServiceName and ServiceFileName; alert on interpreter/temp-path images and
+    services installed during interactive or remote-admin sessions.
+level: medium

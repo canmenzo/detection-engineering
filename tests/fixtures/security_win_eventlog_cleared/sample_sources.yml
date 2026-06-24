@@ -1,0 +1,9 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+samples:
+  - name: true_positive
+    expect: fire          # Security 1102: the Security audit log was cleared
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0005-Defense Evasion/T1070.001-Clear Windows event logs/ID104-1102-Event log cleared.evtx
+    sha256: 2E815C6303C57914D54FA4D6FF7D13122693638852B39A4D212E21C5B2AE7ED2

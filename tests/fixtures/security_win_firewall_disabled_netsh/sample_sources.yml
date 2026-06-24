@@ -1,0 +1,9 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+samples:
+  - name: true_positive
+    expect: fire          # 4688: netsh ... state off disabling firewall profiles
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0005-Defense Evasion/T1562.004-Impair Defenses-Disable or Modify System Firewall/ID4688-5447-4950-Firewall disabled (command).evtx
+    sha256: 16BDC81F8CA7F20609B01266B92873BE1D2B3DBA317A69A2909CF898DCB89FA1
