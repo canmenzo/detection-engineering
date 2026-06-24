@@ -1,0 +1,38 @@
+title: Impacket-Style Remote Execution Output Redirect (WMIexec/SMBexec/ATexec)
+id: 7e2c4b91-3d6a-4f58-8b27-1c9e5a2d6f04
+status: experimental
+description: >
+  Detects the command-output semaphore that Impacket's wmiexec/smbexec/atexec
+  leave behind: a 'cmd.exe /Q /c ...' invocation whose stdout/stderr is redirected
+  to a loopback admin share file beginning with '__' (e.g.
+  \\127.0.0.1\C$\__output or \\127.0.0.1\ADMIN$\__1700000000.00). This pattern is
+  how those tools retrieve the result of a remotely executed command and is a
+  strong indicator of lateral movement / remote code execution over WMI or SMB.
+references:
+  - https://attack.mitre.org/techniques/T1047/
+  - https://github.com/fortra/impacket/blob/master/examples/wmiexec.py
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.execution
+  - attack.lateral_movement
+  - attack.t1047
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  sel_cmdline:
+    CommandLine|contains|all:
+      - '\\127.0.0.1\'
+      - '__'
+  sel_parent:
+    ParentCommandLine|contains|all:
+      - '\\127.0.0.1\'
+      - '__'
+  condition: sel_cmdline or sel_parent
+falsepositives:
+  - Rare. Some administrative scripts redirect output to loopback shares, but the
+    '__'-prefixed semaphore file combined with 127.0.0.1 admin shares is highly
+    specific to Impacket-family tooling.
+level: high
