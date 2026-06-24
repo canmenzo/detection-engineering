@@ -15,6 +15,23 @@ This repo treats detections like software: version-controlled rules, unit tests
 against real adversary telemetry, CI/CD, and an auto-generated coverage map — so
 a detection is only "done" when it's tested, mapped, and merged.
 
+## Two tiers: authored vs. vendored
+
+The corpus is deliberately split so quality and breadth are never conflated:
+
+- **`detections/`** — my own rules. Each one is ATT&CK-mapped **and** unit-tested
+  against real adversary EVTX via Hayabusa. This is the showcase; the fixture gate
+  applies here and CI fails if any rule lacks a test.
+- **`vendored/`** — a pinned, clearly-attributed copy of the public
+  [SigmaHQ](https://github.com/SigmaHQ/sigma) Windows corpus (~2,400 rules, DRL 1.1).
+  It is **not** my work and is **not** held to the fixture gate. It runs through the
+  same conversion pipeline (a tolerant batch smoke-test — currently 100% convert to
+  Splunk) and feeds the coverage map, demonstrating I can operate a large rule corpus
+  through CI at scale. See [`vendored/README.md`](vendored/README.md).
+
+The coverage matrix shows both: **green** cells are authored + fixture-tested,
+**blue** cells are vendored-only (shaded by rule count).
+
 ## How it works
 
 ```
@@ -35,7 +52,8 @@ a detection is only "done" when it's tested, mapped, and merged.
 python -m venv .venv && .venv\Scripts\activate   # Windows
 pip install -r requirements.txt
 
-python tools/validate_metadata.py          # metadata + fixture discipline
+python tools/validate_metadata.py          # metadata + fixture discipline (authored only)
+python tools/vendored_report.py            # batch convert + coverage over vendored SigmaHQ
 python tools/generate_coverage_png.py      # writes coverage/coverage.png
 python tools/generate_navigator_layer.py   # writes coverage/navigator_layer.json
 python tools/generate_dashboard.py         # writes site/index.html (the live dashboard)

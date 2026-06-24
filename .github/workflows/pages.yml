@@ -28,6 +28,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: render coverage matrix + dashboard
         run: |
+          python tools/vendored_report.py
           python tools/generate_coverage_png.py
           python tools/generate_dashboard.py
       - uses: actions/configure-pages@v5

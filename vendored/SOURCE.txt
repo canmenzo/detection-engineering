@@ -1,0 +1,5 @@
+upstream   = https://github.com/SigmaHQ/sigma
+commit      = bbcae2453a6f396790272e82a357ba3779950a00
+subset      = rules/windows
+imported_on = 2026-06-24
+license     = Detection Rule License (DRL) 1.1

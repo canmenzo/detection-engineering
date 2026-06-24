@@ -1,0 +1,2 @@
+# Vendored SigmaHQ rules: preserve upstream LF line endings verbatim.
+vendored/** text eol=lf

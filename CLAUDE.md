@@ -12,13 +12,16 @@ Python is confined to two glue scripts (`tools/generate_navigator_layer.py`,
 **Hayabusa** (Rust, runs Sigma against EVTX), driven by pytest.
 
 ## Repo structure
-- `detections/` — Sigma YAML rules, organized by data source (windows/cloud/identity)
+- `detections/` — AUTHORED Sigma rules (the showcase); held to the fixture gate
+- `vendored/` — pinned third-party SigmaHQ Windows corpus (~2,400, DRL 1.1); NOT
+  gated — fed through convert + coverage only. `vendored_report.py` → `report.json`
 - `tests/` — pytest drives Hayabusa; `fixtures/<rule_stem>/` holds TP + benign EVTX
 - `pipelines/` — pySigma processing pipelines (field maps for Splunk + Sentinel/Kusto)
-- `tools/` — the two Python glue scripts
+- `tools/` — Python glue scripts (validate_metadata, vendored_report, coverage png,
+  dashboard, navigator layer)
 - `coverage/` — committed Navigator layer JSON + screenshot
 - `docs/` — detection lifecycle + ADRs
-- `.github/workflows/ci.yml` — lint → convert → test → coverage
+- `.github/workflows/ci.yml` — lint → (convert, test, vendored) → coverage
 
 ## Conventions
 - **Required metadata on every rule:** title, id (UUID), status, description,
@@ -33,10 +36,11 @@ pySigma + sigma-cli (convert/check), pySigma backends (splunk, kusto — verify
 package names at install), Hayabusa (EVTX testing), pytest, yamllint.
 
 ## Status
-Phase 2 (breadth) in progress: 13 detections across Execution, Persistence,
-Privilege Escalation, Defense Evasion, Credential Access, and C2 — 14 ATT&CK
-techniques. Every rule is fixture-backed (pinned public EVTX) and verified with
-Hayabusa; `pytest` is green (13/13), `sigma check`/convert/metadata gate all pass.
+15 authored detections, fixture-backed (pinned public EVTX) and verified with
+Hayabusa; `pytest` green (15/15), `sigma check`/convert/metadata gate all pass.
+Two-tier corpus added: `vendored/` holds the SigmaHQ Windows corpus (100% Splunk
+convert) folded into the coverage map → 309 ATT&CK techniques across 14 tactics
+(16 authored + 293 vendored-only). Dashboard + coverage PNG distinguish the tiers.
 
 Note on logsource: Hayabusa maps `category: process_creation` to Sysmon EID 1, so
 4688 Security-log samples won't match those. Rules tested on Security-log samples
