@@ -19,6 +19,10 @@
            padding:14px 18px; min-width:120px; }
   .stat b { display:block; font-size:24px; }
   .stat span { color:var(--muted); font-size:13px; }
+  .stat.alt { border-color:#1f6feb55; }
+  .stat.alt b { color:var(--accent); }
+  h2 { font-size:17px; margin:28px 0 0; }
+  .h2sub { color:var(--muted); font-size:13px; margin:2px 0 0; }
   main { max-width:1100px; margin:0 auto; padding:0 24px 60px; }
   .cov { width:100%; border:1px solid var(--line); border-radius:10px;
           background:#fff; margin:8px 0 24px; }
@@ -56,19 +60,26 @@
 <body>
 <header>
   <h1>Detection Coverage</h1>
-  <div class="sub">Detection-as-Code — every rule version-controlled, ATT&amp;CK-mapped,
-    and unit-tested against real adversary telemetry.
+  <div class="sub">Detection-as-Code — every <b>authored</b> rule version-controlled,
+    ATT&amp;CK-mapped, and unit-tested against real adversary telemetry. The wider
+    <b>vendored</b> SigmaHQ corpus is run through the same conversion pipelines and
+    folded into the coverage map below.
     <a href="https://github.com/canmenzo/detection-engineering/blob/main/README.md">View source on GitHub →</a></div>
   <div class="stats">
-    <div class="stat"><b>15</b><span>detections</span></div>
+    <div class="stat"><b>15</b><span>authored detections</span></div>
     <div class="stat"><b>14</b><span>fixture-tested</span></div>
     <div class="stat"><b>15</b><span>pinned EVTX samples</span></div>
-    <div class="stat"><b>16</b><span>ATT&amp;CK techniques</span></div>
-    <div class="stat"><b>7</b><span>tactics</span></div>
+    <div class="stat alt"><b>2,399</b><span>vendored SigmaHQ rules</span></div>
+    <div class="stat alt"><b>100%</b><span>vendored convert rate</span></div>
+    <div class="stat"><b>309</b><span>ATT&amp;CK techniques</span></div>
   </div>
 </header>
 <main>
   <img src="coverage.png" alt="ATT&CK coverage matrix" class="cov">
+  <h2>Authored detections</h2>
+  <div class="h2sub">My own rules — each ATT&amp;CK-mapped and proven against real
+    adversary EVTX via Hayabusa. The 2,399 vendored SigmaHQ rules are not
+    listed individually; they drive the coverage map above.</div>
   <div class="controls">
     <input type="search" id="q" placeholder="Search detections…">
     <button class="chip active" data-tactic="">All <span>15</span></button>

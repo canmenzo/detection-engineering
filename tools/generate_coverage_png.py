@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Render an ATT&CK-style coverage matrix PNG from the detection corpus.
+"""Render an ATT&CK-style coverage matrix PNG from the two-tier corpus.
 
-Self-contained: reads detections/, groups each technique under the tactic(s) it
-is tagged with, colours each cell by how many detections reference it, and writes
-coverage/coverage.png. No external ATT&CK Navigator site required.
+Self-contained: reads detections/ (authored, fixture-tested) and vendored/
+(SigmaHQ corpus, convert+coverage only), groups each technique under the
+tactic(s) it is tagged with, and draws a Navigator-style dot grid. Authored
+techniques are highlighted in green (the showcase); vendored-only techniques are
+shaded blue by how many rules reference them. Writes coverage/coverage.png.
 
 Run: python tools/generate_coverage_png.py
 """
@@ -16,58 +18,55 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import yaml
 
 REPO = Path(__file__).resolve().parents[1]
 DETECTIONS = REPO / "detections"
+VENDORED = REPO / "vendored"
 OUT = REPO / "coverage" / "coverage.png"
 
 TECHNIQUE_RE = re.compile(r"^attack\.(t\d{4}(?:\.\d{3})?)$", re.IGNORECASE)
-TACTIC_RE = re.compile(r"^attack\.([a-z_]+)$", re.IGNORECASE)
+TACTIC_RE = re.compile(r"^attack\.([a-z_-]+)$", re.IGNORECASE)
 
-# ATT&CK enterprise tactics in kill-chain order (subset we tag).
+# SigmaHQ tags tactics with hyphens and two non-ATT&CK tokens that both fall
+# under Defense Evasion (TA0005): "stealth" (general evasion) and
+# "defense-impairment" (T1562 Impair Defenses).
+TACTIC_ALIASES = {"stealth": "defense_evasion", "defense_impairment": "defense_evasion"}
+
+# ATT&CK enterprise tactics in kill-chain order.
 TACTIC_ORDER = [
-    ("reconnaissance", "Reconnaissance"),
-    ("resource_development", "Resource Development"),
-    ("initial_access", "Initial Access"),
+    ("reconnaissance", "Recon"),
+    ("resource_development", "Resource\nDev"),
+    ("initial_access", "Initial\nAccess"),
     ("execution", "Execution"),
     ("persistence", "Persistence"),
-    ("privilege_escalation", "Privilege Escalation"),
-    ("defense_evasion", "Defense Evasion"),
-    ("credential_access", "Credential Access"),
+    ("privilege_escalation", "Priv\nEsc"),
+    ("defense_evasion", "Defense\nEvasion"),
+    ("credential_access", "Cred\nAccess"),
     ("discovery", "Discovery"),
-    ("lateral_movement", "Lateral Movement"),
+    ("lateral_movement", "Lateral\nMovement"),
     ("collection", "Collection"),
-    ("command_and_control", "Command & Control"),
-    ("exfiltration", "Exfiltration"),
+    ("command_and_control", "C2"),
+    ("exfiltration", "Exfil"),
     ("impact", "Impact"),
 ]
 
-# Short labels for the techniques we cover (extend as the corpus grows).
-TECH_NAMES = {
-    "T1003.001": "LSASS Memory",
-    "T1003.006": "DCSync",
-    "T1027": "Obfuscated Files",
-    "T1053.005": "Scheduled Task",
-    "T1059.001": "PowerShell",
-    "T1070.001": "Clear Event Logs",
-    "T1098": "Account Manipulation",
-    "T1105": "Ingress Tool Transfer",
-    "T1136.001": "Create Local Account",
-    "T1140": "Deobfuscate/Decode",
-    "T1543.003": "Windows Service",
-    "T1558.003": "Kerberoasting",
-    "T1562.001": "Disable/Modify Tools",
-    "T1562.004": "Disable Firewall",
-}
+CELLS_PER_ROW = 6
 
 
-def collect():
-    """Return (counts per technique, set of (tactic, technique) pairs)."""
+def norm_tactic(token: str) -> str:
+    token = token.lower().replace("-", "_")
+    return TACTIC_ALIASES.get(token, token)
+
+
+def scan(root: Path):
+    """Return (tech->rule_count, (tactic, tech) pairs, n_rules) for a corpus."""
     counts: Counter = Counter()
     pairs: set[tuple[str, str]] = set()
-    for rule in sorted(DETECTIONS.rglob("*.yml")) + sorted(DETECTIONS.rglob("*.yaml")):
+    n_rules = 0
+    for rule in list(root.rglob("*.yml")) + list(root.rglob("*.yaml")):
         try:
             doc = yaml.safe_load(rule.read_text(encoding="utf-8"))
         except yaml.YAMLError:
@@ -85,69 +84,99 @@ def collect():
                 continue
             ma = TACTIC_RE.match(tag)
             if ma:
-                tactics.append(ma.group(1).lower())
+                tactics.append(norm_tactic(ma.group(1)))
+        if techs:
+            n_rules += 1
         for t in techs:
             counts[t] += 1
             for tac in tactics:
                 pairs.add((tac, t))
-    return counts, pairs
+    return counts, pairs, n_rules
 
 
 def main() -> int:
-    counts, pairs = collect()
-    by_tactic: dict[str, list[str]] = defaultdict(list)
-    for tac, tech in pairs:
-        by_tactic[tac].append(tech)
+    a_counts, a_pairs, n_auth_rules = scan(DETECTIONS)
+    v_counts, v_pairs, n_vend_rules = scan(VENDORED)
 
-    columns = [(key, name) for key, name in TACTIC_ORDER if by_tactic.get(key)]
+    by_tactic: dict[str, set[str]] = defaultdict(set)
+    for tac, tech in a_pairs | v_pairs:
+        by_tactic[tac].add(tech)
+    authored = {tech for _, tech in a_pairs}
+
+    columns = [(k, name) for k, name in TACTIC_ORDER if by_tactic.get(k)]
     if not columns:
         print("no tagged techniques found")
         return 1
 
-    max_count = max(counts.values(), default=1)
-    cmap = plt.get_cmap("Blues")
+    max_v = max(v_counts.values(), default=1)
+    blues = plt.get_cmap("Blues")
+    AUTH = "#2ea043"  # green — authored + fixture-tested
 
     n_cols = len(columns)
-    max_rows = max(len(by_tactic[k]) for k, _ in columns)
-    cell_w, cell_h = 2.2, 0.62
-    fig_w = n_cols * cell_w + 0.5
-    fig_h = (max_rows + 2) * cell_h + 1.0
+    max_rows = max(-(-len(by_tactic[k]) // CELLS_PER_ROW) for k, _ in columns)
+    cell, gap = 0.12, 0.02
+    col_w = 1.0
+    top = 2.2  # header band
+    fig_w = n_cols * col_w + 0.4
+    fig_h = max_rows * (cell + gap) + top + 1.0
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ax.set_xlim(0, n_cols)
-    ax.set_ylim(0, max_rows + 1.4)
+    ax.set_ylim(0, max_rows * (cell + gap) + top)
     ax.axis("off")
+    y0 = max_rows * (cell + gap)
 
-    n_tech = len(counts)
-    n_det = sum(counts.values())
-    ax.text(0, max_rows + 1.05, "Detection Coverage — MITRE ATT&CK",
-            fontsize=15, fontweight="bold", va="bottom")
-    ax.text(0, max_rows + 0.7,
-            f"{n_det} detections · {n_tech} techniques · {n_cols} tactics",
-            fontsize=9, color="#555", va="bottom")
+    n_auth_t = len(authored)
+    n_total_t = len({t for s in by_tactic.values() for t in s})
+    n_vend_only = n_total_t - n_auth_t
+
+    ax.text(0, y0 + 1.55, "Detection Coverage — MITRE ATT&CK",
+            fontsize=17, fontweight="bold", va="bottom")
+    ax.text(0, y0 + 1.2,
+            f"{n_total_t} techniques across {n_cols} tactics  "
+            f"·  {n_auth_t} authored (fixture-tested) + {n_vend_only} vendored",
+            fontsize=10, color="#444", va="bottom")
+    ax.text(0, y0 + 0.92,
+            f"{n_auth_rules} authored rules  ·  {n_vend_rules} vendored SigmaHQ rules",
+            fontsize=9, color="#777", va="bottom")
 
     for ci, (key, name) in enumerate(columns):
-        ax.text(ci + 0.5, max_rows + 0.25, name, fontsize=9, fontweight="bold",
-                ha="center", va="bottom", wrap=True)
-        ax.add_patch(plt.Rectangle((ci + 0.03, max_rows + 0.1), 0.94, 0.1,
+        techs = by_tactic[key]
+        n_a = len(techs & authored)
+        ax.text(ci + 0.5, y0 + 0.42, name, fontsize=7.5, fontweight="bold",
+                ha="center", va="bottom", linespacing=0.95)
+        ax.text(ci + 0.5, y0 + 0.22, f"{n_a}/{len(techs)}", fontsize=7.5,
+                color="#888", ha="center", va="bottom")
+        ax.add_patch(plt.Rectangle((ci + 0.02, y0 + 0.1), col_w - 0.02, 0.06,
                                    color="#31507a"))
-        for ri, tech in enumerate(sorted(by_tactic[key])):
-            y = max_rows - 1 - ri
-            n = counts[tech]
-            shade = 0.25 + 0.6 * (n / max_count)
-            face = cmap(shade)
-            ax.add_patch(plt.Rectangle((ci + 0.03, y + 0.08), 0.94, 0.82,
-                                       facecolor=face, edgecolor="white"))
-            label = TECH_NAMES.get(tech, tech)
-            txt_color = "white" if shade > 0.55 else "#11243d"
-            ax.text(ci + 0.08, y + 0.6, tech, fontsize=7.5, color=txt_color,
-                    fontweight="bold", va="center")
-            ax.text(ci + 0.08, y + 0.3, label, fontsize=6.8, color=txt_color,
-                    va="center")
+        # authored first (so the showcase sits at the top of each column)
+        ordered = sorted(techs & authored) + sorted(techs - authored)
+        sub_w = (col_w - 0.02) / CELLS_PER_ROW
+        for idx, tech in enumerate(ordered):
+            row, col = divmod(idx, CELLS_PER_ROW)
+            x = ci + 0.02 + col * sub_w
+            y = y0 - (row + 1) * (cell + gap)
+            if tech in authored:
+                face, edge = AUTH, "#1a6e2e"
+            else:
+                shade = 0.30 + 0.55 * (v_counts[tech] / max_v)
+                face, edge = blues(shade), "white"
+            ax.add_patch(plt.Rectangle((x, y), sub_w - 0.012, cell,
+                                       facecolor=face, edgecolor=edge, linewidth=0.4))
+
+    legend = [
+        mpatches.Patch(facecolor=AUTH, edgecolor="#1a6e2e",
+                       label="Authored — ATT&CK-mapped + fixture-tested"),
+        mpatches.Patch(facecolor=blues(0.65), edgecolor="white",
+                       label="Vendored — SigmaHQ corpus (shade = # rules)"),
+    ]
+    ax.legend(handles=legend, loc="lower left", bbox_to_anchor=(0, -0.04),
+              frameon=False, fontsize=8.5, ncol=2, handlelength=1.2)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(OUT, dpi=150, bbox_inches="tight", facecolor="white")
+    fig.savefig(OUT, dpi=140, bbox_inches="tight", facecolor="white")
     plt.close(fig)
-    print(f"Wrote {OUT.relative_to(REPO)} — {n_tech} techniques across {n_cols} tactics.")
+    print(f"Wrote {OUT.relative_to(REPO)} — {n_total_t} techniques "
+          f"({n_auth_t} authored + {n_vend_only} vendored) across {n_cols} tactics.")
     return 0
 
 

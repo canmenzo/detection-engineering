@@ -23,6 +23,7 @@ DETECTIONS = REPO / "detections"
 FIXTURES = REPO / "tests" / "fixtures"
 CONVERSION_ONLY = REPO / "tests" / "conversion_only.txt"
 COVERAGE_PNG = REPO / "coverage" / "coverage.png"
+VENDORED_REPORT = REPO / "vendored" / "report.json"
 SITE = REPO / "site"
 OUT = SITE / "index.html"
 
@@ -45,6 +46,16 @@ TACTIC_NAMES = {
 }
 
 GH_BASE = "https://github.com/canmenzo/detection-engineering/blob/main/"
+
+
+def vendored_summary() -> dict:
+    """Read tools/vendored_report.py output, if present, for the vendored tier."""
+    if not VENDORED_REPORT.exists():
+        return {}
+    try:
+        return json.loads(VENDORED_REPORT.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
 
 
 def conversion_only() -> set[str]:
@@ -111,13 +122,19 @@ def collect() -> list[dict]:
     return rules
 
 
-def render(rules: list[dict]) -> str:
+def render(rules: list[dict], vend: dict) -> str:
     n_total = len(rules)
     n_tested = sum(1 for r in rules if r["status"] == "tested")
     n_samples = sum(r["samples"] for r in rules)
     techniques = sorted({t for r in rules for t in r["techniques"]})
     tactics = sorted({t for r in rules for t in r["tactics"]})
     tactic_counts = Counter(t for r in rules for t in r["tactics"])
+
+    vend_rules = vend.get("total_rules", 0)
+    vend_conv = vend.get("convert", {}) or {}
+    vend_rate = vend_conv.get("rate")
+    vend_rate_pct = f"{100 * vend_rate:.0f}%" if vend_rate is not None else "—"
+    total_tech = len(set(techniques) | set(vend.get("techniques", [])))
 
     data_json = json.dumps(rules)
     chips = "".join(
@@ -150,6 +167,10 @@ def render(rules: list[dict]) -> str:
            padding:14px 18px; min-width:120px; }}
   .stat b {{ display:block; font-size:24px; }}
   .stat span {{ color:var(--muted); font-size:13px; }}
+  .stat.alt {{ border-color:#1f6feb55; }}
+  .stat.alt b {{ color:var(--accent); }}
+  h2 {{ font-size:17px; margin:28px 0 0; }}
+  .h2sub {{ color:var(--muted); font-size:13px; margin:2px 0 0; }}
   main {{ max-width:1100px; margin:0 auto; padding:0 24px 60px; }}
   .cov {{ width:100%; border:1px solid var(--line); border-radius:10px;
           background:#fff; margin:8px 0 24px; }}
@@ -187,19 +208,26 @@ def render(rules: list[dict]) -> str:
 <body>
 <header>
   <h1>Detection Coverage</h1>
-  <div class="sub">Detection-as-Code — every rule version-controlled, ATT&amp;CK-mapped,
-    and unit-tested against real adversary telemetry.
+  <div class="sub">Detection-as-Code — every <b>authored</b> rule version-controlled,
+    ATT&amp;CK-mapped, and unit-tested against real adversary telemetry. The wider
+    <b>vendored</b> SigmaHQ corpus is run through the same conversion pipelines and
+    folded into the coverage map below.
     <a href="{GH_BASE}README.md">View source on GitHub →</a></div>
   <div class="stats">
-    <div class="stat"><b>{n_total}</b><span>detections</span></div>
+    <div class="stat"><b>{n_total}</b><span>authored detections</span></div>
     <div class="stat"><b>{n_tested}</b><span>fixture-tested</span></div>
     <div class="stat"><b>{n_samples}</b><span>pinned EVTX samples</span></div>
-    <div class="stat"><b>{len(techniques)}</b><span>ATT&amp;CK techniques</span></div>
-    <div class="stat"><b>{len(tactics)}</b><span>tactics</span></div>
+    <div class="stat alt"><b>{vend_rules:,}</b><span>vendored SigmaHQ rules</span></div>
+    <div class="stat alt"><b>{vend_rate_pct}</b><span>vendored convert rate</span></div>
+    <div class="stat"><b>{total_tech}</b><span>ATT&amp;CK techniques</span></div>
   </div>
 </header>
 <main>
   {cov_img}
+  <h2>Authored detections</h2>
+  <div class="h2sub">My own rules — each ATT&amp;CK-mapped and proven against real
+    adversary EVTX via Hayabusa. The {vend_rules:,} vendored SigmaHQ rules are not
+    listed individually; they drive the coverage map above.</div>
   <div class="controls">
     <input type="search" id="q" placeholder="Search detections…">
     <button class="chip active" data-tactic="">All <span>{n_total}</span></button>
@@ -253,8 +281,9 @@ render();
 
 def main() -> int:
     rules = collect()
+    vend = vendored_summary()
     SITE.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(render(rules), encoding="utf-8")
+    OUT.write_text(render(rules, vend), encoding="utf-8")
     if COVERAGE_PNG.exists():
         shutil.copyfile(COVERAGE_PNG, SITE / "coverage.png")
     tested = sum(1 for r in rules if r["status"] == "tested")
