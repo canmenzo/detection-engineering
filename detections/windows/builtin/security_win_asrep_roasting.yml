@@ -1,0 +1,34 @@
+title: AS-REP Roasting - Kerberos Pre-Authentication Not Required
+id: 4a8d2c63-9e1f-4b75-a2c8-6d3e7b1a5f29
+status: experimental
+description: >
+  Detects a Kerberos authentication-service request (EID 4768) for an account that
+  does not require pre-authentication (PreAuthType 0). When 'Do not require
+  Kerberos preauthentication' is set on an account, anyone can request an AS-REP
+  encrypted with the account's password hash and crack it offline (AS-REP
+  roasting). RC4 (0x17) encryption makes the resulting hash especially weak.
+  Machine accounts are excluded.
+references:
+  - https://attack.mitre.org/techniques/T1558/004/
+  - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=4768
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-06-24
+tags:
+  - attack.credential_access
+  - attack.t1558.004
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4768
+    PreAuthType: '0'
+  filter_machine:
+    TargetUserName|endswith: '$'
+  condition: selection and not filter_machine
+falsepositives:
+  - A small number of legacy accounts are intentionally configured without
+    pre-authentication. Inventory those accounts, alert on any new account gaining
+    this setting, and treat RC4 AS-REP requests as higher priority.
+level: high

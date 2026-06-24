@@ -1,0 +1,10 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+# Sysmon EID 1 sample, so the process_creation category maps cleanly in Hayabusa.
+samples:
+  - name: true_positive
+    expect: fire          # wmiexec: parent cmd redirects output to \\127.0.0.1\C$\__output
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0002-Execution/T1047-Windows Management Instrumentation/ID1-WMIexec process execution.evtx
+    sha256: 91C113522DC73779DCE81C47AEFE139C6A91BCB23A90943CDF0108EA3812DBE5

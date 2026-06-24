@@ -27,6 +27,12 @@
       "enabled": true
     },
     {
+      "techniqueID": "T1047",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
       "techniqueID": "T1053.005",
       "score": 1,
       "comment": "1 detection",
@@ -76,6 +82,12 @@
     },
     {
       "techniqueID": "T1558.003",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1558.004",
       "score": 1,
       "comment": "1 detection",
       "enabled": true
