@@ -15,7 +15,7 @@ author: Can Ozmen
 date: 2026-06-24
 modified: 2026-06-24
 tags:
-  - attack.credential_access
+  - attack.credential-access
   - attack.t1558.003
 logsource:
   product: windows

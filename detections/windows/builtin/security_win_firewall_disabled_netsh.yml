@@ -8,14 +8,14 @@ description: >
   disable the host firewall to enable inbound C2, lateral movement, or tool
   transfer.
 references:
-  - https://attack.mitre.org/techniques/T1562/004/
+  - https://attack.mitre.org/techniques/T1686/003/
   - https://lolbas-project.github.io/lolbas/Binaries/Netsh/
 author: Can Ozmen
 date: 2026-06-24
 modified: 2026-06-24
 tags:
-  - attack.defense_evasion
-  - attack.t1562.004
+  - attack.defense-impairment
+  - attack.t1686.003
 logsource:
   product: windows
   service: security
