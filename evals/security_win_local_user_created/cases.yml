@@ -1,0 +1,75 @@
+description: >
+  Local user account created (EID 4720). Another bare EventID match with no
+  discriminating logic, and unlike 1102 this event is common: helpdesk workflows,
+  imaging, and application installers all create accounts. Expect FP rate 1.0 on
+  a high-volume event, which is the combination that actually hurts a SOC.
+cases:
+  - name: backdoor_account_lookalike_name
+    label: malicious
+    why: account named to blend with service accounts, created outside any workflow
+    event:
+      EventID: 4720
+      TargetUserName: svchost
+      TargetDomainName: WORKSTATION01
+      SubjectUserName: jdoe
+      SubjectDomainName: CORP
+
+  - name: account_created_by_web_service
+    label: malicious
+    why: account creation parented by a web application identity implies webshell
+    event:
+      EventID: 4720
+      TargetUserName: support1
+      TargetDomainName: WEB01
+      SubjectUserName: IIS APPPOOL\DefaultAppPool
+      SubjectDomainName: IIS APPPOOL
+
+  - name: trailing_space_evasion_name
+    label: malicious
+    why: trailing-space account name is a known hiding trick for local backdoors
+    event:
+      EventID: 4720
+      TargetUserName: "admin "
+      TargetDomainName: FS03
+      SubjectUserName: admmig
+      SubjectDomainName: OFFSEC
+
+  - name: helpdesk_creates_local_admin
+    label: benign
+    why: sanctioned helpdesk workflow creating a local break-glass account
+    event:
+      EventID: 4720
+      TargetUserName: localsupport
+      TargetDomainName: WORKSTATION07
+      SubjectUserName: helpdesk-tech2
+      SubjectDomainName: CORP
+
+  - name: imaging_creates_default_account
+    label: benign
+    why: OS deployment creating the standard local account during provisioning
+    event:
+      EventID: 4720
+      TargetUserName: corpadmin
+      TargetDomainName: WORKSTATION12
+      SubjectUserName: svc-imaging
+      SubjectDomainName: CORP
+
+  - name: sql_installer_creates_service_account
+    label: benign
+    why: application installers routinely create local service accounts
+    event:
+      EventID: 4720
+      TargetUserName: MSSQLSERVER$
+      TargetDomainName: SQL02
+      SubjectUserName: svc-deploy
+      SubjectDomainName: CORP
+
+  - name: defaultaccount_enabled_by_os
+    label: benign
+    why: Windows itself creating built-in accounts during a feature update
+    event:
+      EventID: 4720
+      TargetUserName: DefaultAccount
+      TargetDomainName: WORKSTATION12
+      SubjectUserName: SYSTEM
+      SubjectDomainName: NT AUTHORITY

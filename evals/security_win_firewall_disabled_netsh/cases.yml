@@ -1,0 +1,96 @@
+description: >
+  Windows firewall disabled via netsh (EID 4688). The rule requires the netsh
+  image plus either (state AND off) or (firewall AND disable) in the command
+  line. Benign cases are ordinary netsh usage, including firewall rule
+  administration that mentions "firewall" without disabling anything, and the
+  "show state" variants that share keywords with the malicious pattern.
+cases:
+  - name: disable_all_profiles
+    label: malicious
+    why: the canonical "turn the firewall off everywhere" command
+    event:
+      EventID: 4688
+      NewProcessName: C:\Windows\System32\netsh.exe
+      CommandLine: netsh advfirewall set allprofiles state off
+      ParentProcessName: C:\Windows\System32\cmd.exe
+
+  - name: disable_domain_profile
+    label: malicious
+    why: disabling just the domain profile to allow inbound tooling
+    event:
+      EventID: 4688
+      NewProcessName: C:\Windows\System32\netsh.exe
+      CommandLine: netsh advfirewall set domainprofile state off
+      ParentProcessName: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+  - name: legacy_firewall_disable
+    label: malicious
+    why: legacy syntax achieving the same result
+    event:
+      EventID: 4688
+      NewProcessName: C:\Windows\System32\netsh.exe
+      CommandLine: netsh firewall set opmode disable
+      ParentProcessName: C:\Windows\System32\cmd.exe
+
+  - name: show_firewall_state
+    label: benign
+    why: >-
+      read-only status check. Contains both "state" and "firewall" but not
+      "off"/"disable" in the pairs the rule requires — this is the case that
+      proves the AND-pairs are doing work.
+    event:
+      EventID: 4688
+      NewProcessName: C:\Windows\System32\netsh.exe
+      CommandLine: netsh advfirewall show allprofiles state
+      ParentProcessName: C:\Windows\System32\cmd.exe
+
+  - name: add_firewall_rule
+    label: benign
+    why: opening a port for an application; mentions firewall, changes nothing off
+    event:
+      EventID: 4688
+      NewProcessName: C:\Windows\System32\netsh.exe
+      CommandLine: >-
+        netsh advfirewall firewall add rule name="CorpApp" dir=in action=allow
+        protocol=TCP localport=8443
+      ParentProcessName: C:\Windows\System32\cmd.exe
+
+  - name: enable_all_profiles
+    label: benign
+    why: hardening script turning the firewall back on — the opposite action
+    event:
+      EventID: 4688
+      NewProcessName: C:\Windows\System32\netsh.exe
+      CommandLine: netsh advfirewall set allprofiles state on
+      ParentProcessName: C:\Windows\System32\cmd.exe
+
+  - name: disable_firewall_rule_not_firewall
+    label: benign
+    why: >-
+      disabling a single rule, not the firewall. Contains "firewall" and
+      "disable" and therefore fires — a real false positive, and the most
+      plausible one an admin will generate.
+    event:
+      EventID: 4688
+      NewProcessName: C:\Windows\System32\netsh.exe
+      CommandLine: >-
+        netsh advfirewall firewall set rule name="LegacyApp" new enable=no disable
+      ParentProcessName: C:\Windows\System32\cmd.exe
+
+  - name: interface_reset
+    label: benign
+    why: unrelated netsh subcommand; no shared keywords
+    event:
+      EventID: 4688
+      NewProcessName: C:\Windows\System32\netsh.exe
+      CommandLine: netsh interface ip reset
+      ParentProcessName: C:\Windows\System32\cmd.exe
+
+  - name: other_binary_mentions_firewall_off
+    label: benign
+    why: the rule is anchored on the netsh image; another process saying the same words must not match
+    event:
+      EventID: 4688
+      NewProcessName: C:\Windows\System32\cmd.exe
+      CommandLine: cmd.exe /c echo "check whether firewall state off is required"
+      ParentProcessName: C:\Windows\explorer.exe

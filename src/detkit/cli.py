@@ -6,10 +6,14 @@ from collections.abc import Callable, Sequence
 
 from detkit import coverage, dashboard, navigator, validate, vendored
 from detkit.attack import AttackDriftError
+from detkit.evaluation import runner as evaluation
+from detkit.evaluation.cases import CaseError
+from detkit.evaluation.engine import EvaluationError
 from detkit.rules import RuleError
 
 COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "validate": (validate.run, "metadata + fixture + ATT&CK tag discipline (authored rules)"),
+    "eval": (evaluation.run, "score every rule against its labelled events"),
     "vendored": (vendored.run, "batch convert + coverage report over the vendored corpus"),
     "navigator": (navigator.run, "write coverage/navigator_layer.json"),
     "coverage": (coverage.run, "render coverage/coverage.png"),
@@ -27,7 +31,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     run, _ = COMMANDS[args.command]
     try:
         return run()
-    except (AttackDriftError, RuleError) as exc:
+    except (AttackDriftError, RuleError, CaseError, EvaluationError) as exc:
         print(exc)
         return 1
 

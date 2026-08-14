@@ -43,6 +43,8 @@ The coverage matrix shows both: **green** cells are authored + fixture-tested,
         │
         ├── Hayabusa + pytest ──── TP fixture must fire, benign fixture must not
         │
+        ├── detkit eval ────────── scored against labelled events: precision, recall, FP rate
+        │
         └── coverage map ───────── coverage.png matrix + ATT&CK Navigator layer
 ```
 
@@ -55,6 +57,7 @@ exact environment CI uses, from `uv.lock`.
 uv sync --all-extras          # exact locked environment, incl. dev tooling
 
 uv run detkit validate        # metadata + fixture + ATT&CK tag discipline (authored only)
+uv run detkit eval            # precision / recall / FP rate per rule
 uv run detkit vendored        # batch convert + coverage over the vendored SigmaHQ corpus
 uv run detkit coverage        # writes coverage/coverage.png
 uv run detkit navigator       # writes coverage/navigator_layer.json
@@ -75,15 +78,64 @@ the harness-integrity tests always run. CI sets `DETKIT_REQUIRE_HAYABUSA=1`,
 which turns any skip into a build failure — a detection suite that did not
 execute must never report green.
 
+## Detection quality
+
+Every rule is scored against a golden dataset of labelled events — true
+positives *and* benign look-alikes that differ only where the rule's logic is
+supposed to discriminate. `detkit eval` reports precision, recall and
+false-positive rate per rule; run it yourself and get the numbers below.
+
+Read **FP rate** first. Precision depends on the malicious-to-benign ratio in the
+case set, which is authored, not observed — so it is comparable between runs but
+is not a claim about a real event stream. FP rate (the share of benign events
+that alert) and recall do not move with that ratio.
+
+The four rules at FP rate 1.00 are bare single-EventID matches. They alert on
+every benign event of that type because they contain no discriminating logic at
+all. That is not a bug in the measurement; it is the measurement doing its job.
+
+120 labelled events across 15 rules:
+
+| rule | TP | FP | FN | TN | precision | recall | FP rate |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `proc_creation_win_encoded_powershell` | 4 | 0 | 1 | 4 | 1.00 | 0.80 | 0.00 |
+| `proc_creation_win_impacket_wmiexec_output` | 3 | 0 | 0 | 4 | 1.00 | 1.00 | 0.00 |
+| `security_win_dcsync_replication` | 3 | 0 | 0 | 4 | 1.00 | 1.00 | 0.00 |
+| `security_win_firewall_disabled_netsh` | 3 | 1 | 0 | 5 | 0.75 | 1.00 | 0.17 |
+| `security_win_kerberoasting_rc4_request` | 3 | 1 | 0 | 5 | 0.75 | 1.00 | 0.17 |
+| `sysmon_proc_access_lsass_dump` | 4 | 1 | 0 | 4 | 0.80 | 1.00 | 0.20 |
+| `security_win_asrep_roasting` | 3 | 1 | 0 | 3 | 0.75 | 1.00 | 0.25 |
+| `security_win_certutil_download_decode` | 4 | 2 | 0 | 4 | 0.67 | 1.00 | 0.33 |
+| `posh_ps_defender_tamper` | 5 | 2 | 0 | 3 | 0.71 | 1.00 | 0.40 |
+| `security_win_user_added_to_privileged_group` | 3 | 2 | 0 | 2 | 0.60 | 1.00 | 0.50 |
+| `posh_ps_susp_encoded_powershell_scriptblock` | 4 | 4 | 0 | 2 | 0.50 | 1.00 | 0.67 |
+| `security_win_eventlog_cleared` | 3 | 2 | 0 | 0 | 0.60 | 1.00 | **1.00** |
+| `security_win_local_user_created` | 3 | 4 | 0 | 0 | 0.43 | 1.00 | **1.00** |
+| `security_win_scheduled_task_created` | 3 | 4 | 0 | 0 | 0.43 | 1.00 | **1.00** |
+| `security_win_service_installed` | 3 | 4 | 0 | 0 | 0.43 | 1.00 | **1.00** |
+
+Two results worth calling out rather than burying:
+
+- **`proc_creation_win_encoded_powershell` misses a true positive** (recall 0.80).
+  `powershell.exe` accepts `-e` as an abbreviation of `-EncodedCommand`, and the
+  rule only tests `-enc`, `-encodedcommand` and `-ec`. The evasion is in the case
+  set as a known miss.
+- **`posh_ps_susp_encoded_powershell_scriptblock` fires on two thirds of benign
+  PowerShell** in its set. `-join` and `[Convert]::ToInt` are ordinary
+  administrative code. As written this rule is a hunting query, not an alert.
+
 ## Known gaps
 
 Stated plainly, because a reviewer will find them anyway:
 
-- **Detection quality is not measured yet.** Tests assert only that a rule fires
-  on an attack sample and stays silent on a benign one. There is no precision,
-  recall or false-positive rate per rule, and 14 of 15 rules currently have no
-  benign counter-example at all. An eval harness over labelled events is the
-  next piece of work.
+- **The benign events are authored, not captured.** They measure whether a rule's
+  logic discriminates. They do not measure real-world base rates, so nothing here
+  predicts alert volume on a live estate.
+- **The evaluator coerces numeric strings**, matching Hayabusa's loose typing and
+  therefore being more lenient than a strictly-typed backend. See
+  [ADR 0003](docs/adr/0003-sql-evaluator-for-labelled-events.md).
+- **Thresholds do not gate the build yet.** The eval runs on every PR and reports;
+  per-rule bars and a regression ratchet are the next piece of work.
 - **`sigma check` is advisory, not a gate.** Two rules use `service: security`
   with raw EID 4688 fields instead of the generic `process_creation` logsource,
   because Hayabusa maps that category to Sysmon EID 1 and will not match the

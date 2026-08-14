@@ -84,6 +84,21 @@ jobs:
           DETKIT_REQUIRE_HAYABUSA: "1"
         run: uv run pytest -v
 
+  eval:
+    name: detection quality
+    runs-on: ubuntu-latest
+    needs: [python, rules]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-extras
+      - name: score every rule against its labelled events
+        # Reports precision / recall / FP rate per rule. Thresholds do not gate
+        # the build yet — that lands with the per-rule bars and the ratchet.
+        run: uv run detkit eval
+
   vendored:
     # Third-party SigmaHQ corpus: NOT held to the fixture gate (see vendored/README.md).
     # Proven at scale instead — every rule must batch-convert through the Splunk
@@ -101,7 +116,7 @@ jobs:
 
   coverage:
     runs-on: ubuntu-latest
-    needs: [python, rules, convert, test, vendored]
+    needs: [python, rules, convert, test, eval, vendored]
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v5
@@ -111,6 +126,7 @@ jobs:
       - name: regenerate every published artifact
         run: |
           uv run detkit vendored
+          uv run detkit eval
           uv run detkit navigator
           uv run detkit coverage
           uv run detkit dashboard
@@ -124,6 +140,7 @@ jobs:
           git diff --exit-code -- \
             coverage/navigator_layer.json \
             vendored/report.json \
+            evals/results.json \
             site/index.html \
           || { echo "::error::generated artifacts are stale — run the generators and commit"; exit 1; }
       - uses: actions/upload-artifact@v4

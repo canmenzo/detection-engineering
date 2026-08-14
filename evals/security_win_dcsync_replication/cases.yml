@@ -1,0 +1,99 @@
+description: >
+  DCSync (EID 4662) — a directory-service access request for one of the
+  replication extended rights, by a non-machine account. Benign cases are the
+  legitimate replication traffic between domain controllers (which the trailing-$
+  filter is there to remove) and ordinary directory access to other objects.
+cases:
+  - name: mimikatz_dcsync_get_changes_all
+    label: malicious
+    why: user account requesting DS-Replication-Get-Changes-All — the DCSync right
+    event:
+      EventID: 4662
+      SubjectUserName: jdoe
+      SubjectDomainName: CORP
+      ObjectServer: DS
+      ObjectType: domainDNS
+      Properties: >-
+        Control Access {1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}
+        {89e95b76-444d-4c62-991a-0facbeda640c}
+      AccessMask: "0x100"
+
+  - name: dcsync_get_changes
+    label: malicious
+    why: the base replication right, also sufficient for credential replication
+    event:
+      EventID: 4662
+      SubjectUserName: admmig
+      SubjectDomainName: OFFSEC
+      ObjectServer: DS
+      ObjectType: domainDNS
+      Properties: Control Access {1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}
+      AccessMask: "0x100"
+
+  - name: dcsync_via_compromised_service_account
+    label: malicious
+    why: a service account that was granted replication rights and then abused
+    event:
+      EventID: 4662
+      SubjectUserName: svc-legacyapp
+      SubjectDomainName: CORP
+      ObjectServer: DS
+      ObjectType: domainDNS
+      Properties: Control Access {89e95b76-444d-4c62-991a-0facbeda640c}
+      AccessMask: "0x100"
+
+  - name: dc_replication_between_controllers
+    label: benign
+    why: >-
+      the real thing: DC01$ replicating from DC02. Same extended right, excluded
+      only by the trailing-$ machine-account filter. This is the single most
+      important benign case for this rule.
+    event:
+      EventID: 4662
+      SubjectUserName: DC01$
+      SubjectDomainName: CORP
+      ObjectServer: DS
+      ObjectType: domainDNS
+      Properties: >-
+        Control Access {1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}
+        {1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}
+      AccessMask: "0x100"
+
+  - name: rodc_replication
+    label: benign
+    why: read-only DC pulling its filtered replica; also a machine account
+    event:
+      EventID: 4662
+      SubjectUserName: RODC03$
+      SubjectDomainName: CORP
+      ObjectServer: DS
+      ObjectType: domainDNS
+      Properties: Control Access {1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}
+      AccessMask: "0x100"
+
+  - name: user_reads_group_object
+    label: benign
+    why: ordinary directory read with no replication GUID — must not match
+    event:
+      EventID: 4662
+      SubjectUserName: jsmith
+      SubjectDomainName: CORP
+      ObjectServer: DS
+      ObjectType: group
+      Properties: Read Property {bf9679c0-0de6-11d0-a285-00aa003049e2}
+      AccessMask: "0x10"
+
+  - name: azure_ad_connect_sync
+    label: benign
+    why: >-
+      directory sync service reading user attributes. Runs as a named account,
+      not a machine account, but requests no replication right, so the GUID
+      condition is what keeps it quiet.
+    event:
+      EventID: 4662
+      SubjectUserName: MSOL_a1b2c3d4
+      SubjectDomainName: CORP
+      ObjectServer: DS
+      ObjectType: user
+      Properties: Read Property {59ba2f42-79a2-11d0-9020-00c04fc2d3cf}
+      AccessMask: "0x10"

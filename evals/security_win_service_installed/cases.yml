@@ -1,0 +1,83 @@
+description: >
+  Service installed (EID 4697). Bare EventID match. Service installation is a
+  strong persistence and lateral-movement signal, but it is also what every
+  driver, agent and application installer does, so the benign half of this set
+  is deliberately mundane.
+cases:
+  - name: psexec_style_service
+    label: malicious
+    why: randomly named service pointing at a binary in ADMIN$ — remote exec pattern
+    event:
+      EventID: 4697
+      ServiceName: mnbvcxz
+      ServiceFileName: '%SystemRoot%\mnbvcxz.exe'
+      ServiceType: "0x10"
+      ServiceStartType: 3
+      SubjectUserName: admmig
+
+  - name: service_runs_encoded_powershell
+    label: malicious
+    why: service whose image path is a PowerShell one-liner is never legitimate
+    event:
+      EventID: 4697
+      ServiceName: WindowsHealthSvc
+      ServiceFileName: >-
+        powershell.exe -nop -w hidden -enc JABjAGwAaQBlAG4AdAAgAD0AIABOAGUAdwA
+      ServiceType: "0x10"
+      ServiceStartType: 2
+      SubjectUserName: SYSTEM
+
+  - name: metasploit_payload_service
+    label: malicious
+    why: service binary staged in a temp directory under a plausible-sounding name
+    event:
+      EventID: 4697
+      ServiceName: UpdateSvc
+      ServiceFileName: C:\Windows\Temp\svchost32.exe
+      ServiceType: "0x10"
+      ServiceStartType: 2
+      SubjectUserName: WEB01$
+
+  - name: edr_agent_installed
+    label: benign
+    why: security agent installing its own service during rollout
+    event:
+      EventID: 4697
+      ServiceName: Sense
+      ServiceFileName: '"C:\Program Files\Windows Defender Advanced Threat Protection\MsSense.exe"'
+      ServiceType: "0x10"
+      ServiceStartType: 2
+      SubjectUserName: SYSTEM
+
+  - name: printer_driver_service
+    label: benign
+    why: a print driver package registering its spooler helper service
+    event:
+      EventID: 4697
+      ServiceName: HPPrintScanDoctorService
+      ServiceFileName: '"C:\Program Files\HP\Service\HPPrintScanDoctor.exe"'
+      ServiceType: "0x10"
+      ServiceStartType: 3
+      SubjectUserName: SYSTEM
+
+  - name: sql_engine_service
+    label: benign
+    why: database engine installation, a routine change-managed event
+    event:
+      EventID: 4697
+      ServiceName: MSSQL$INSTANCE01
+      ServiceFileName: '"C:\Program Files\Microsoft SQL Server\MSSQL15\Binn\sqlservr.exe"'
+      ServiceType: "0x10"
+      ServiceStartType: 2
+      SubjectUserName: svc-deploy
+
+  - name: vendor_kernel_driver
+    label: benign
+    why: signed kernel driver registered by a hardware vendor's installer
+    event:
+      EventID: 4697
+      ServiceName: nvlddmkm
+      ServiceFileName: \SystemRoot\System32\DriverStore\FileRepository\nv_dispi.inf\nvlddmkm.sys
+      ServiceType: "0x1"
+      ServiceStartType: 3
+      SubjectUserName: SYSTEM

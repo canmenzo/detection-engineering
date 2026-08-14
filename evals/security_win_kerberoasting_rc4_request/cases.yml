@@ -1,0 +1,121 @@
+description: >
+  Kerberoasting (EID 4769) — RC4 (0x17) service-ticket requests, excluding
+  machine accounts and krbtgt.
+
+  Modelled on a MODERN domain where AES-256 (0x12) is the default, so RC4 is
+  genuinely anomalous. That assumption is doing a lot of work: in a legacy estate
+  with RC4 still enabled, the benign half of this set would be full of RC4
+  tickets and this rule's measured precision would collapse. The number below is
+  precision *for a well-configured domain*, and it should be read that way.
+cases:
+  - name: rc4_ticket_for_sql_service
+    label: malicious
+    why: RC4 TGS for a high-value SPN in an AES domain — the roasting signature
+    event:
+      EventID: 4769
+      TargetUserName: jdoe@CORP.LOCAL
+      ServiceName: MSSQLSvc-SQL01
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      TicketOptions: "0x40810000"
+      IpAddress: ::ffff:10.10.20.31
+
+  - name: rc4_ticket_for_web_service
+    label: malicious
+    why: same pattern against a second SPN, consistent with an SPN sweep
+    event:
+      EventID: 4769
+      TargetUserName: jdoe@CORP.LOCAL
+      ServiceName: HTTP-intranet
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      TicketOptions: "0x40810000"
+      IpAddress: ::ffff:10.10.20.31
+
+  - name: rc4_ticket_for_backup_service
+    label: malicious
+    why: third SPN in the sweep from the same requesting user
+    event:
+      EventID: 4769
+      TargetUserName: jdoe@CORP.LOCAL
+      ServiceName: CorpBackup-svc
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      TicketOptions: "0x40810000"
+      IpAddress: ::ffff:10.10.20.31
+
+  - name: aes256_ticket_normal
+    label: benign
+    why: AES-256 service ticket — the default in this domain and the common case
+    event:
+      EventID: 4769
+      TargetUserName: jsmith@CORP.LOCAL
+      ServiceName: MSSQLSvc-SQL01
+      TicketEncryptionType: "0x12"
+      Status: "0x0"
+      TicketOptions: "0x40810000"
+      IpAddress: ::ffff:10.10.20.44
+
+  - name: aes128_ticket_normal
+    label: benign
+    why: AES-128 is also normal and must not match
+    event:
+      EventID: 4769
+      TargetUserName: jsmith@CORP.LOCAL
+      ServiceName: HTTP-intranet
+      TicketEncryptionType: "0x11"
+      Status: "0x0"
+      TicketOptions: "0x40810000"
+      IpAddress: ::ffff:10.10.20.44
+
+  - name: rc4_machine_account
+    label: benign
+    why: computer accounts still negotiate RC4 in places; excluded by the trailing-$ filter
+    event:
+      EventID: 4769
+      TargetUserName: WORKSTATION07$@CORP.LOCAL
+      ServiceName: WORKSTATION07$
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      TicketOptions: "0x40810000"
+      IpAddress: ::ffff:10.10.20.90
+
+  - name: rc4_krbtgt_request
+    label: benign
+    why: krbtgt RC4 traffic is normal Kerberos plumbing; explicitly excluded
+    event:
+      EventID: 4769
+      TargetUserName: jsmith@CORP.LOCAL
+      ServiceName: krbtgt
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      TicketOptions: "0x40810000"
+      IpAddress: ::ffff:10.10.20.44
+
+  - name: failed_rc4_request
+    label: benign
+    why: >-
+      a failed request (non-zero status) is not a successful roast; the rule
+      requires Status 0x0, and this proves that condition is load-bearing
+    event:
+      EventID: 4769
+      TargetUserName: jdoe@CORP.LOCAL
+      ServiceName: MSSQLSvc-SQL01
+      TicketEncryptionType: "0x17"
+      Status: "0x1f"
+      TicketOptions: "0x40810000"
+      IpAddress: ::ffff:10.10.20.31
+
+  - name: legacy_appliance_rc4
+    label: benign
+    why: >-
+      one surviving legacy appliance that still requests RC4 for its own SPN.
+      Fires — the residual false positive even in an AES domain.
+    event:
+      EventID: 4769
+      TargetUserName: svc-vendorsync@CORP.LOCAL
+      ServiceName: VENDORAPP-svc
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      TicketOptions: "0x40810000"
+      IpAddress: ::ffff:10.10.30.12

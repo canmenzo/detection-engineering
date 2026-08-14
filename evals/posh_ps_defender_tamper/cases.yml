@@ -1,0 +1,99 @@
+description: >
+  Defender tampering via PowerShell (EID 4104). The rule requires a
+  Set-MpPreference or Add-MpPreference call AND one of the weakening options
+  (Exclusion*, DisableRealtimeMonitoring, DisableBehaviorMonitoring,
+  DisableIOAVProtection, DisableScriptScanning, MAPSReporting 0,
+  SubmitSamplesConsent 0).
+
+  The benign set includes sanctioned exclusion management, which is a real
+  administrative task on estates running line-of-business software — and which
+  this rule cannot distinguish from an attacker carving out a staging directory.
+cases:
+  - name: disable_realtime_monitoring
+    label: malicious
+    why: turning off real-time protection outright
+    event:
+      EventID: 4104
+      ScriptBlockText: Set-MpPreference -DisableRealtimeMonitoring $true
+      Path: ""
+
+  - name: exclude_staging_directory
+    label: malicious
+    why: excluding a world-writable path immediately before staging a payload there
+    event:
+      EventID: 4104
+      ScriptBlockText: Add-MpPreference -ExclusionPath 'C:\Users\Public'
+      Path: ""
+
+  - name: disable_script_scanning_and_ioav
+    label: malicious
+    why: disabling script and downloaded-file scanning together
+    event:
+      EventID: 4104
+      ScriptBlockText: Set-MpPreference -DisableScriptScanning $true -DisableIOAVProtection $true
+      Path: ""
+
+  - name: silence_cloud_reporting
+    label: malicious
+    why: cutting cloud telemetry so detonation is not reported upstream
+    event:
+      EventID: 4104
+      ScriptBlockText: Set-MpPreference -MAPSReporting 0 -SubmitSamplesConsent 0
+      Path: ""
+
+  - name: exclude_exe_extension
+    label: malicious
+    why: excluding an entire executable extension is never a legitimate posture
+    event:
+      EventID: 4104
+      ScriptBlockText: Add-MpPreference -ExclusionExtension '.exe'
+      Path: ""
+
+  - name: sanctioned_lob_app_exclusion
+    label: benign
+    why: >-
+      documented vendor-required exclusion for a line-of-business application,
+      applied by the platform team. Fires. A genuine false positive and the
+      reason this rule needs allow-listing by path and by author.
+    event:
+      EventID: 4104
+      ScriptBlockText: Add-MpPreference -ExclusionPath 'C:\Program Files\CorpERP\cache'
+      Path: C:\Scripts\baseline-defender.ps1
+
+  - name: sql_data_directory_exclusion
+    label: benign
+    why: Microsoft's own guidance recommends excluding SQL data files; fires
+    event:
+      EventID: 4104
+      ScriptBlockText: Add-MpPreference -ExclusionPath 'D:\MSSQL\DATA'
+      Path: C:\Scripts\sql-postinstall.ps1
+
+  - name: read_current_preferences
+    label: benign
+    why: Get-MpPreference is read-only and shares no verb with the rule
+    event:
+      EventID: 4104
+      ScriptBlockText: Get-MpPreference | Select-Object DisableRealtimeMonitoring, ExclusionPath
+      Path: C:\Scripts\audit-defender.ps1
+
+  - name: schedule_scan_settings
+    label: benign
+    why: >-
+      Set-MpPreference used for a harmless scheduling change — matches the verb
+      but none of the weakening options, proving the second condition is
+      load-bearing
+    event:
+      EventID: 4104
+      ScriptBlockText: Set-MpPreference -ScanScheduleDay 3 -ScanScheduleTime 02:00:00
+      Path: C:\Scripts\baseline-defender.ps1
+
+  - name: remove_stale_exclusion
+    label: benign
+    why: >-
+      Remove-MpPreference tightening posture by deleting an old exclusion. The
+      opposite of tampering, but "Exclusion" appears and the verb does not match,
+      so it must stay quiet.
+    event:
+      EventID: 4104
+      ScriptBlockText: Remove-MpPreference -ExclusionPath 'C:\Legacy\tmp'
+      Path: C:\Scripts\baseline-defender.ps1

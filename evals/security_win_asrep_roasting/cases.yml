@@ -1,0 +1,99 @@
+description: >
+  AS-REP roasting (EID 4768, PreAuthType 0) — an AS-REQ for an account that does
+  not require Kerberos pre-authentication. Machine accounts are excluded. Benign
+  cases cover normal pre-authenticated logons and the legacy accounts that are
+  intentionally configured without pre-auth, which is where this rule's real
+  false positives live.
+
+  Note PreAuthType arrives from EVTX as the string "0"; the evaluator coerces
+  numeric strings so the rule's integer literal matches, as Hayabusa does. See
+  ADR 0003 — this is exactly the case that made the difference.
+cases:
+  - name: asrep_roastable_user
+    label: malicious
+    why: RC4 AS-REP for a user account with pre-auth disabled — crackable offline
+    event:
+      EventID: 4768
+      TargetUserName: admin-test
+      TargetDomainName: OFFSEC.LAN
+      PreAuthType: "0"
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      IpAddress: ::ffff:10.10.10.55
+
+  - name: asrep_roast_service_identity
+    label: malicious
+    why: a service identity without pre-auth is a high-value roasting target
+    event:
+      EventID: 4768
+      TargetUserName: svc-legacyapp
+      TargetDomainName: CORP.LOCAL
+      PreAuthType: "0"
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      IpAddress: ::ffff:10.10.10.55
+
+  - name: asrep_sweep_second_account
+    label: malicious
+    why: second account in the same sweep, from the same source host
+    event:
+      EventID: 4768
+      TargetUserName: helpdesk-svc
+      TargetDomainName: CORP.LOCAL
+      PreAuthType: "0"
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      IpAddress: ::ffff:10.10.10.55
+
+  - name: normal_preauthenticated_logon
+    label: benign
+    why: standard AS-REQ with pre-auth (type 2) — the overwhelming majority of 4768s
+    event:
+      EventID: 4768
+      TargetUserName: jdoe
+      TargetDomainName: CORP.LOCAL
+      PreAuthType: "2"
+      TicketEncryptionType: "0x12"
+      Status: "0x0"
+      IpAddress: ::ffff:10.10.20.31
+
+  - name: pkinit_smartcard_logon
+    label: benign
+    why: smart-card logon uses PKINIT pre-auth (type 15), not 0
+    event:
+      EventID: 4768
+      TargetUserName: jsmith
+      TargetDomainName: CORP.LOCAL
+      PreAuthType: "15"
+      TicketEncryptionType: "0x12"
+      Status: "0x0"
+      IpAddress: ::ffff:10.10.20.44
+
+  - name: machine_account_no_preauth
+    label: benign
+    why: >-
+      computer account with PreAuthType 0 — excluded by the trailing-$ filter.
+      This case exists to prove the exclusion works.
+    event:
+      EventID: 4768
+      TargetUserName: WORKSTATION07$
+      TargetDomainName: CORP.LOCAL
+      PreAuthType: "0"
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      IpAddress: ::ffff:10.10.20.90
+
+  - name: legacy_account_without_preauth
+    label: benign
+    why: >-
+      a genuinely legacy account intentionally configured without pre-auth for a
+      vendor appliance. Fires. This is the rule's true false positive, and the
+      reason the rule's own falsepositives note says to inventory these accounts.
+    event:
+      EventID: 4768
+      TargetUserName: svc-vendorsync
+      TargetDomainName: CORP.LOCAL
+      PreAuthType: "0"
+      TicketEncryptionType: "0x17"
+      Status: "0x0"
+      IpAddress: ::ffff:10.10.30.12
