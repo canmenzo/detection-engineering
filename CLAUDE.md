@@ -64,16 +64,22 @@ Hayabusa. `pytest` 20/20 (15 detection + 5 harness-integrity). Coverage:
 vendored SigmaHQ Windows corpus converts 2399/2399 to Splunk.
 
 ### Production-grade engagement (6 phases, agreed 2026-08-14)
-1. ✅ **Honest gates** 2. ✅ **Python foundation** 3. ✅ **Eval harness** —
-120 labelled events, precision/recall/FP per rule 4. Rule rewrite to idiomatic
-logsources + per-rule eval thresholds and ratchet in CI 5. Reproducible local
-setup (justfile, devcontainer, pinned Hayabusa) 6. README/dashboard rewrite,
-with the eval numbers injected from results.json rather than hand-typed.
+1. ✅ **Honest gates** 2. ✅ **Python foundation** 3. ✅ **Eval harness**
+4. 🔶 **Rule quality + CI gating** — discriminators, thresholds and the PR
+template are done; the logsource/pipeline work below is NOT. 5. Reproducible
+local setup (justfile, devcontainer, pinned Hayabusa) 6. README/dashboard
+rewrite, with eval numbers injected from results.json rather than hand-typed.
 
-Open decision for Phase 4: PRs-vs-direct-push for rule changes. Outcome #4 wants
-eval results attached before merge, which needs PRs; Can's standing rule is
-commit straight to main. Suggested compromise: PRs for `detections/**` and
-`evals/**` only. **Not yet answered — ask before wiring branch protection.**
+**Phase 4 remainder (do this next):** the last 2 `sigma check` issues are
+`SpecificInsteadOfGenericLogsource` on `certutil_download_decode` and
+`firewall_disabled_netsh` — both are EID 4688 rules that should be
+`category: process_creation`. Fixing them means (a) rewriting those two rules to
+generic fields, (b) rewriting their eval cases to Sysmon-1 field names,
+(c) their Hayabusa fixtures break because Hayabusa maps process_creation to
+Sysmon EID 1 only, so they need Sysmon samples or become conversion-only, and
+(d) `pipelines/*.yml` need index/sourcetype and table binding so the converted
+SPL/KQL is actually deployable. Only then can `sigma check --fail-on-issues`
+go on. **Do not turn that flag on before the count is zero.**
 
 ## Phase 1 hardening — what changed and why
 - **The suite could not fail.** No Hayabusa → all tests skipped → `pytest` exit 0.
@@ -131,10 +137,34 @@ commit straight to main. Suggested compromise: PRs for `detections/**` and
   nothing. It also rejects a missing `why`, and any set lacking either label.
 - **Read FP rate, not precision.** Precision moves with the authored
   malicious:benign ratio; FP rate and recall do not.
-- Findings: 4 bare-EventID rules sit at **FP rate 1.00**; the 4104 obfuscation
+- Findings: 4 bare-EventID rules sat at **FP rate 1.00**; the 4104 obfuscation
   rule is at 0.67 (it fires on `-join`); `proc_creation_win_encoded_powershell`
   has a **real recall gap** — `powershell -e` is a valid abbreviation the rule
   does not cover. All are recorded in the case sets, not hidden.
+
+## Phase 4 — rule quality and gating
+- **NEVER use a folded/block scalar (`>` or `|`) for a Sigma `condition:`.**
+  Hayabusa fails to parse the rule and reports only "Rule parsing errors: 1"
+  without naming it, so the rule silently stops running — while `sigma check` and
+  the SQL backend both accept it. `detkit validate` now rejects this.
+- 4697/4698 gained discriminators (interpreter/LOLBIN, user-writable path, and
+  for 4697 a bare exe in the Windows root with a **branch-scoped** System32
+  filter, because `%SystemRoot%\System32\svchost.exe -k` is ubiquitous).
+  4697: 0.43 → 1.00 precision, FP rate 1.00 → 0.00. 4698: 0.43 → 0.75, 1.00 → 0.25.
+- Write discriminators against the **real pinned EVTX**, not just synthetic
+  cases — probe the sample first (scratchpad `spike_crosscheck.py` has the
+  evtx_dump → flatten helpers).
+- 1102 stays `high` with FP rate 1.0 accepted on a **base-rate** argument;
+  4720 and the 4104 obfuscation rule are demoted to `informational`.
+- Thresholds live in `evals/<stem>/cases.yml`, **not** in the Sigma rules, so the
+  rules stay portable. Defaults are strict; anything lenient is rejected at load
+  time without a `justification`.
+- **No ratchet file** — `evals/results.json` is drift-checked, so any metric
+  change already fails CI until committed deliberately. Don't add one.
+- **GitHub cannot require PRs for only some paths.** Branch protection is
+  per-branch. So "PRs for detections/** and evals/** only" is enforced by
+  convention: PR template + eval gate + results published to the run summary.
+  Protecting all of `main` is the only way to make it mandatory — Can's call.
 
 Note on logsource: Hayabusa maps `category: process_creation` to Sysmon EID 1, so
 4688 Security-log samples won't match those. Rules tested on Security-log samples
