@@ -81,3 +81,18 @@ cases:
       ServiceType: "0x1"
       ServiceStartType: 3
       SubjectUserName: SYSTEM
+
+  - name: svchost_shared_service
+    label: benign
+    why: >-
+      %SystemRoot%\System32\svchost.exe -k is how a large share of Windows ships.
+      It satisfies the "executable under the Windows root" branch, so this case
+      exists to prove the System32 filter on that branch actually works — without
+      it the rule would fire on a substantial fraction of every host's services.
+    event:
+      EventID: 4697
+      ServiceName: WpnService
+      ServiceFileName: '%SystemRoot%\System32\svchost.exe -k netsvcs -p'
+      ServiceType: "0x20"
+      ServiceStartType: 2
+      SubjectUserName: SYSTEM

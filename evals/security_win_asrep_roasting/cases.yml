@@ -8,6 +8,15 @@ description: >
   Note PreAuthType arrives from EVTX as the string "0"; the evaluator coerces
   numeric strings so the rule's integer literal matches, as Hayabusa does. See
   ADR 0003 — this is exactly the case that made the difference.
+thresholds:
+  min_precision: 0.70
+  max_fp_rate: 0.30
+  justification: >-
+    Accounts intentionally configured without pre-authentication are a real
+    configuration state, not a detection failure. The residual false positive is
+    a known legacy account; the fix is an inventory of those accounts fed in as
+    an exclusion list, not a change to the rule logic.
+
 cases:
   - name: asrep_roastable_user
     label: malicious

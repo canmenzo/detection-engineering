@@ -7,6 +7,15 @@ description: >
   with RC4 still enabled, the benign half of this set would be full of RC4
   tickets and this rule's measured precision would collapse. The number below is
   precision *for a well-configured domain*, and it should be read that way.
+thresholds:
+  min_precision: 0.70
+  max_fp_rate: 0.25
+  justification: >-
+    Measured against a modern AES-default domain, where RC4 is anomalous. The one
+    residual false positive is a legacy appliance still negotiating RC4. In an estate
+    that has not moved off RC4 these numbers do not transfer at all — the bar
+    would have to be re-derived against that environment's own case set.
+
 cases:
   - name: rc4_ticket_for_sql_service
     label: malicious

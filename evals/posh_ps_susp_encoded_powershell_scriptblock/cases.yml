@@ -6,6 +6,16 @@ description: >
   particular appear in perfectly normal administrative scripts, so the benign set
   is full of code a sysadmin would write on any given Tuesday. This rule is
   expected to score badly, and that is the point of measuring it.
+thresholds:
+  min_precision: 0.45
+  max_fp_rate: 0.70
+  justification: >-
+    A token-frequency heuristic, not a detection. -join and [Convert]::ToInt are
+    ordinary PowerShell, so two thirds of benign administrative script blocks
+    fire. Demoted to informational and kept as a hunting query: useful for
+    ranking script blocks by suspiciousness, unusable as a page. Tightening it
+    means scoring multiple tokens together rather than matching any one of them.
+
 cases:
   - name: invoke_obfuscation_base64
     label: malicious

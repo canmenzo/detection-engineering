@@ -8,6 +8,15 @@ description: >
   The benign set includes sanctioned exclusion management, which is a real
   administrative task on estates running line-of-business software — and which
   this rule cannot distinguish from an attacker carving out a staging directory.
+thresholds:
+  min_precision: 0.65
+  max_fp_rate: 0.45
+  justification: >-
+    Sanctioned exclusion management is genuinely indistinguishable from an
+    attacker carving out a staging directory when all you have is the 4104 event.
+    Separating them needs the author identity and the excluded path checked
+    against an approved list, which is enrichment the rule cannot do alone.
+
 cases:
   - name: disable_realtime_monitoring
     label: malicious

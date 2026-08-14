@@ -37,11 +37,30 @@ class Case:
 
 
 @dataclass(frozen=True)
+class Thresholds:
+    """The bar a rule must clear. Defaults are strict; leniency must be argued."""
+
+    min_precision: float = 0.9
+    min_recall: float = 1.0
+    max_fp_rate: float = 0.1
+    justification: str = ""
+
+    @property
+    def is_lenient(self) -> bool:
+        return (
+            self.min_precision < 0.9
+            or self.min_recall < 1.0
+            or self.max_fp_rate > 0.1
+        )
+
+
+@dataclass(frozen=True)
 class CaseSet:
     stem: str
     path: Path
     description: str
     cases: tuple[Case, ...]
+    thresholds: Thresholds = Thresholds()
 
     @property
     def malicious(self) -> tuple[Case, ...]:
@@ -103,9 +122,39 @@ def load_case_set(path: Path) -> CaseSet:
         path=path,
         description=str(doc.get("description", "")).strip(),
         cases=tuple(cases),
+        thresholds=_thresholds(path, doc.get("thresholds")),
     )
     _validate(case_set)
     return case_set
+
+
+def _thresholds(path: Path, raw: object) -> Thresholds:
+    if raw is None:
+        return Thresholds()
+    if not isinstance(raw, dict):
+        raise CaseError(f"{path}: thresholds must be a mapping")
+    unknown = set(raw) - {"min_precision", "min_recall", "max_fp_rate", "justification"}
+    if unknown:
+        raise CaseError(f"{path}: unknown threshold key(s): {sorted(unknown)}")
+    try:
+        thresholds = Thresholds(
+            min_precision=float(raw.get("min_precision", 0.9)),
+            min_recall=float(raw.get("min_recall", 1.0)),
+            max_fp_rate=float(raw.get("max_fp_rate", 0.1)),
+            justification=str(raw.get("justification", "")).strip(),
+        )
+    except (TypeError, ValueError) as exc:
+        raise CaseError(f"{path}: thresholds must be numeric: {exc}") from exc
+
+    # Lowering the bar is allowed. Lowering it silently is not.
+    if thresholds.is_lenient and not thresholds.justification:
+        raise CaseError(
+            f"{path}: thresholds are below the default bar "
+            f"(precision >= 0.9, recall == 1.0, FP rate <= 0.1) and need a "
+            f"'justification'. A weakened threshold without a stated reason is "
+            f"how a gate stops meaning anything."
+        )
+    return thresholds
 
 
 def _validate(case_set: CaseSet) -> None:

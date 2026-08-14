@@ -12,7 +12,12 @@
       "false_alarms": [
         "sanctioned_lob_app_exclusion",
         "sql_data_directory_exclusion"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.65,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.45
+      }
     },
     "posh_ps_susp_encoded_powershell_scriptblock": {
       "tp": 4,
@@ -28,7 +33,12 @@
         "report_script_formats_csv",
         "parse_config_integer",
         "legitimate_base64_certificate"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.45,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.7
+      }
     },
     "proc_creation_win_encoded_powershell": {
       "tp": 4,
@@ -41,7 +51,12 @@
       "missed": [
         "single_letter_e_abbreviation"
       ],
-      "false_alarms": []
+      "false_alarms": [],
+      "thresholds": {
+        "min_precision": 0.9,
+        "min_recall": 0.8,
+        "max_fp_rate": 0.1
+      }
     },
     "proc_creation_win_impacket_wmiexec_output": {
       "tp": 3,
@@ -52,7 +67,12 @@
       "recall": 1.0,
       "fp_rate": 0.0,
       "missed": [],
-      "false_alarms": []
+      "false_alarms": [],
+      "thresholds": {
+        "min_precision": 0.9,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.1
+      }
     },
     "security_win_asrep_roasting": {
       "tp": 3,
@@ -65,7 +85,12 @@
       "missed": [],
       "false_alarms": [
         "legacy_account_without_preauth"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.7,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.3
+      }
     },
     "security_win_certutil_download_decode": {
       "tp": 4,
@@ -79,7 +104,12 @@
       "false_alarms": [
         "pki_script_encodes_request",
         "sccm_decodes_policy_blob"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.6,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.4
+      }
     },
     "security_win_dcsync_replication": {
       "tp": 3,
@@ -90,7 +120,12 @@
       "recall": 1.0,
       "fp_rate": 0.0,
       "missed": [],
-      "false_alarms": []
+      "false_alarms": [],
+      "thresholds": {
+        "min_precision": 0.9,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.1
+      }
     },
     "security_win_eventlog_cleared": {
       "tp": 3,
@@ -104,7 +139,12 @@
       "false_alarms": [
         "admin_clears_during_troubleshooting",
         "cleared_before_decommission"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.55,
+        "min_recall": 1.0,
+        "max_fp_rate": 1.0
+      }
     },
     "security_win_firewall_disabled_netsh": {
       "tp": 3,
@@ -117,7 +157,12 @@
       "missed": [],
       "false_alarms": [
         "disable_firewall_rule_not_firewall"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.7,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.2
+      }
     },
     "security_win_kerberoasting_rc4_request": {
       "tp": 3,
@@ -130,7 +175,12 @@
       "missed": [],
       "false_alarms": [
         "legacy_appliance_rc4"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.7,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.25
+      }
     },
     "security_win_local_user_created": {
       "tp": 3,
@@ -146,39 +196,46 @@
         "imaging_creates_default_account",
         "sql_installer_creates_service_account",
         "defaultaccount_enabled_by_os"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.4,
+        "min_recall": 1.0,
+        "max_fp_rate": 1.0
+      }
     },
     "security_win_scheduled_task_created": {
       "tp": 3,
-      "fp": 4,
+      "fp": 1,
       "fn": 0,
-      "tn": 0,
-      "precision": 0.4286,
+      "tn": 3,
+      "precision": 0.75,
       "recall": 1.0,
-      "fp_rate": 1.0,
+      "fp_rate": 0.25,
       "missed": [],
       "false_alarms": [
-        "chrome_updater_task",
-        "backup_agent_nightly_task",
-        "sccm_deployment_task",
         "admin_creates_reporting_task"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.7,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.3
+      }
     },
     "security_win_service_installed": {
       "tp": 3,
-      "fp": 4,
+      "fp": 0,
       "fn": 0,
-      "tn": 0,
-      "precision": 0.4286,
+      "tn": 5,
+      "precision": 1.0,
       "recall": 1.0,
-      "fp_rate": 1.0,
+      "fp_rate": 0.0,
       "missed": [],
-      "false_alarms": [
-        "edr_agent_installed",
-        "printer_driver_service",
-        "sql_engine_service",
-        "vendor_kernel_driver"
-      ]
+      "false_alarms": [],
+      "thresholds": {
+        "min_precision": 0.9,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.1
+      }
     },
     "security_win_user_added_to_privileged_group": {
       "tp": 3,
@@ -192,7 +249,12 @@
       "false_alarms": [
         "helpdesk_grants_rdp_access",
         "imaging_adds_corpadmin"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.55,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.55
+      }
     },
     "sysmon_proc_access_lsass_dump": {
       "tp": 4,
@@ -205,7 +267,12 @@
       "missed": [],
       "false_alarms": [
         "defender_scans_lsass"
-      ]
+      ],
+      "thresholds": {
+        "min_precision": 0.75,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.25
+      }
     }
   }
 }

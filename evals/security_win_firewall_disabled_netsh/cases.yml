@@ -4,6 +4,15 @@ description: >
   line. Benign cases are ordinary netsh usage, including firewall rule
   administration that mentions "firewall" without disabling anything, and the
   "show state" variants that share keywords with the malicious pattern.
+thresholds:
+  min_precision: 0.70
+  max_fp_rate: 0.20
+  justification: >-
+    "netsh advfirewall firewall set rule ... disable" disables a single rule, not
+    the firewall, but shares both keywords with the malicious pattern. Excluding
+    it needs a negative condition on "set rule", which risks an attacker
+    including that phrase to evade. The false positive is the safer trade.
+
 cases:
   - name: disable_all_profiles
     label: malicious

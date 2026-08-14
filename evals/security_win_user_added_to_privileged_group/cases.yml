@@ -4,6 +4,16 @@ description: >
   Users (555) and Remote Management Users (562). Benign cases are additions to
   those same groups through sanctioned processes, plus additions to
   non-privileged groups that must not match.
+thresholds:
+  min_precision: 0.55
+  max_fp_rate: 0.55
+  justification: >-
+    Privileged-group additions are performed legitimately by helpdesk and
+    provisioning workflows, and the event carries nothing that separates a
+    sanctioned grant from an attacker's. The discriminator that would work is the
+    actor: additions by accounts outside the helpdesk group. That is enrichment
+    against directory data, not something a single-event rule can express.
+
 cases:
   - name: added_to_administrators_by_user
     label: malicious

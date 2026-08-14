@@ -3,6 +3,18 @@ description: >
   discriminating logic, and unlike 1102 this event is common: helpdesk workflows,
   imaging, and application installers all create accounts. Expect FP rate 1.0 on
   a high-volume event, which is the combination that actually hurts a SOC.
+thresholds:
+  min_precision: 0.40
+  max_fp_rate: 1.0
+  justification: >-
+    Unlike the 1102 rule, this one cannot lean on a low base rate: account
+    creation is routine on a managed estate, so FP rate 1.0 here means real,
+    daily noise. The rule is therefore demoted to informational and treated as an
+    audit trail rather than an alert. Closing this properly needs correlation
+    (creation followed by privileged-group addition, or creation outside the
+    helpdesk workflow), which is stateful and out of scope for a single-event
+    rule.
+
 cases:
   - name: backdoor_account_lookalike_name
     label: malicious
