@@ -1,0 +1,78 @@
+description: >
+  Scheduled task created (EID 4698). Bare EventID match. Scheduled tasks are
+  created constantly by installers, management agents and Windows itself, so
+  this set is where the "alert on every 4698" approach is most obviously
+  untenable — the benign cases here are all things that happen daily on a
+  managed estate.
+cases:
+  - name: task_runs_encoded_powershell_as_system
+    label: malicious
+    why: persistence task launching encoded PowerShell as SYSTEM every 10 minutes
+    event:
+      EventID: 4698
+      TaskName: \Microsoft\Windows\UpdateOrchestrator\RebootTask
+      SubjectUserName: jdoe
+      SubjectDomainName: CORP
+      TaskContent: >-
+        <Exec><Command>powershell.exe</Command><Arguments>-nop -w hidden -enc
+        SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA</Arguments></Exec>
+
+  - name: task_masquerades_as_windows_task
+    label: malicious
+    why: task placed in a Microsoft namespace path to hide among built-ins
+    event:
+      EventID: 4698
+      TaskName: \Microsoft\Windows\Defender\Scheduled Scan Helper
+      SubjectUserName: admmig
+      SubjectDomainName: OFFSEC
+      TaskContent: <Exec><Command>C:\Users\Public\svc.exe</Command></Exec>
+
+  - name: task_launches_from_temp
+    label: malicious
+    why: scheduled execution of a binary staged in a world-writable temp path
+    event:
+      EventID: 4698
+      TaskName: \SystemUpdate
+      SubjectUserName: WEB01$
+      SubjectDomainName: CORP
+      TaskContent: <Exec><Command>C:\Windows\Temp\update.exe</Command></Exec>
+
+  - name: chrome_updater_task
+    label: benign
+    why: application installer registering its updater — happens on every install
+    event:
+      EventID: 4698
+      TaskName: \GoogleUpdateTaskMachineUA
+      SubjectUserName: SYSTEM
+      SubjectDomainName: NT AUTHORITY
+      TaskContent: <Exec><Command>C:\Program Files\Google\Update\GoogleUpdate.exe</Command></Exec>
+
+  - name: backup_agent_nightly_task
+    label: benign
+    why: sanctioned backup schedule created by the management agent
+    event:
+      EventID: 4698
+      TaskName: \CorpBackup\NightlyIncremental
+      SubjectUserName: svc-backup
+      SubjectDomainName: CORP
+      TaskContent: <Exec><Command>C:\Program Files\CorpBackup\agent.exe</Command></Exec>
+
+  - name: sccm_deployment_task
+    label: benign
+    why: configuration management creating a software-deployment task
+    event:
+      EventID: 4698
+      TaskName: \Microsoft\Configuration Manager\Software Center Deploy
+      SubjectUserName: SYSTEM
+      SubjectDomainName: NT AUTHORITY
+      TaskContent: <Exec><Command>C:\Windows\CCM\CcmExec.exe</Command></Exec>
+
+  - name: admin_creates_reporting_task
+    label: benign
+    why: a DBA scheduling a nightly report export; ordinary sanctioned automation
+    event:
+      EventID: 4698
+      TaskName: \Reports\NightlyExport
+      SubjectUserName: dba-lead
+      SubjectDomainName: CORP
+      TaskContent: <Exec><Command>C:\Scripts\export.cmd</Command></Exec>

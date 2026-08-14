@@ -1,0 +1,134 @@
+"""Loading and validating the golden dataset.
+
+Each rule has evals/<stem>/cases.yml holding labelled events. A benign case must
+be a genuine look-alike: same event type as the true positives, differing only
+where the rule's logic is supposed to discriminate. A "benign" event of an
+entirely different type proves nothing, so the loader rejects it.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from detkit.paths import EVALS
+
+MALICIOUS = "malicious"
+BENIGN = "benign"
+LABELS = {MALICIOUS, BENIGN}
+
+
+class CaseError(Exception):
+    """A case file is malformed."""
+
+
+@dataclass(frozen=True)
+class Case:
+    name: str
+    label: str
+    why: str
+    event: dict[str, Any]
+
+    @property
+    def is_malicious(self) -> bool:
+        return self.label == MALICIOUS
+
+
+@dataclass(frozen=True)
+class CaseSet:
+    stem: str
+    path: Path
+    description: str
+    cases: tuple[Case, ...]
+
+    @property
+    def malicious(self) -> tuple[Case, ...]:
+        return tuple(c for c in self.cases if c.is_malicious)
+
+    @property
+    def benign(self) -> tuple[Case, ...]:
+        return tuple(c for c in self.cases if not c.is_malicious)
+
+    @property
+    def events(self) -> list[dict[str, Any]]:
+        return [c.event for c in self.cases]
+
+
+def _discriminator(event: dict[str, Any]) -> Any:
+    """What makes two events "the same kind of event"."""
+    return event.get("EventID")
+
+
+def load_case_set(path: Path) -> CaseSet:
+    try:
+        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise CaseError(f"{path}: unparseable YAML: {exc}") from exc
+    if not isinstance(doc, dict):
+        raise CaseError(f"{path}: not a YAML mapping")
+
+    raw_cases = doc.get("cases")
+    if not isinstance(raw_cases, list) or not raw_cases:
+        raise CaseError(f"{path}: no cases")
+
+    cases = []
+    seen: set[str] = set()
+    for entry in raw_cases:
+        if not isinstance(entry, dict):
+            raise CaseError(f"{path}: case is not a mapping")
+        name = entry.get("name")
+        label = entry.get("label")
+        why = entry.get("why")
+        event = entry.get("event")
+        if not name or not isinstance(name, str):
+            raise CaseError(f"{path}: case without a name")
+        if name in seen:
+            raise CaseError(f"{path}: duplicate case name {name!r}")
+        seen.add(name)
+        if label not in LABELS:
+            raise CaseError(f"{path}: case {name!r} has label {label!r}, expected one of {LABELS}")
+        if not why or not isinstance(why, str):
+            raise CaseError(
+                f"{path}: case {name!r} needs a 'why' explaining the label. "
+                f"An unexplained label is an assertion, not evidence."
+            )
+        if not isinstance(event, dict) or not event:
+            raise CaseError(f"{path}: case {name!r} has no event")
+        cases.append(Case(name=name, label=label, why=why, event=event))
+
+    case_set = CaseSet(
+        stem=path.parent.name,
+        path=path,
+        description=str(doc.get("description", "")).strip(),
+        cases=tuple(cases),
+    )
+    _validate(case_set)
+    return case_set
+
+
+def _validate(case_set: CaseSet) -> None:
+    if not case_set.malicious:
+        raise CaseError(f"{case_set.path}: no malicious cases — recall is undefined")
+    if not case_set.benign:
+        raise CaseError(
+            f"{case_set.path}: no benign cases — precision would be 1.0 by construction, "
+            f"which is exactly the gap this harness exists to close"
+        )
+
+    # A benign case must be a look-alike, not a different kind of event.
+    malicious_kinds = {_discriminator(c.event) for c in case_set.malicious}
+    for case in case_set.benign:
+        if _discriminator(case.event) not in malicious_kinds:
+            raise CaseError(
+                f"{case_set.path}: benign case {case.name!r} is EventID "
+                f"{_discriminator(case.event)!r}, which no malicious case uses. "
+                f"A benign event of a different type cannot exercise the rule's logic."
+            )
+
+
+def load_all() -> list[CaseSet]:
+    if not EVALS.exists():
+        return []
+    return [load_case_set(p) for p in sorted(EVALS.glob("*/cases.yml"))]

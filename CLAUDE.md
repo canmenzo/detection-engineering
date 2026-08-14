@@ -64,16 +64,16 @@ Hayabusa. `pytest` 20/20 (15 detection + 5 harness-integrity). Coverage:
 vendored SigmaHQ Windows corpus converts 2399/2399 to Splunk.
 
 ### Production-grade engagement (6 phases, agreed 2026-08-14)
-1. ✅ **Honest gates** 2. ✅ **Python foundation** (src layout, uv lock, ruff,
-mypy --strict, 40 unit tests) 3. **Eval harness** — labelled JSON events,
-precision/recall/FP per rule 4. Rule rewrite to idiomatic logsources + per-rule
-eval thresholds in CI 5. Reproducible local setup (justfile, devcontainer,
-pinned Hayabusa) 6. README/dashboard rewrite with real numbers.
+1. ✅ **Honest gates** 2. ✅ **Python foundation** 3. ✅ **Eval harness** —
+120 labelled events, precision/recall/FP per rule 4. Rule rewrite to idiomatic
+logsources + per-rule eval thresholds and ratchet in CI 5. Reproducible local
+setup (justfile, devcontainer, pinned Hayabusa) 6. README/dashboard rewrite,
+with the eval numbers injected from results.json rather than hand-typed.
 
-Phase 3 opens with a **timeboxed spike**: Zircolite vs. a small in-repo pySigma
-matcher for evaluating rules against labelled JSON events. Do not build before
-that spike reports. Open decisions: PRs-vs-direct-push for rule changes (Phase 4),
-lsass allow-list + Kerberos domain model for eval data (Phase 3).
+Open decision for Phase 4: PRs-vs-direct-push for rule changes. Outcome #4 wants
+eval results attached before merge, which needs PRs; Can's standing rule is
+commit straight to main. Suggested compromise: PRs for `detections/**` and
+`evals/**` only. **Not yet answered — ask before wiring branch protection.**
 
 ## Phase 1 hardening — what changed and why
 - **The suite could not fail.** No Hayabusa → all tests skipped → `pytest` exit 0.
@@ -116,6 +116,25 @@ lsass allow-list + Kerberos domain model for eval data (Phase 3).
 - The refactor was verified by regenerating every artifact: `navigator_layer.json`,
   `vendored/report.json` and `coverage.png` came out **byte-identical**; the only
   diff was one dashboard footer line naming the new command.
+
+## Phase 3 — eval harness
+- `evals/<stem>/cases.yml` holds labelled events; `detkit eval` scores every rule and
+  writes `evals/results.json` (drift-checked in CI like the other artifacts).
+- Engine = pySigma's **SQLite backend**, rules rendered to SQL and run over an
+  in-memory table. ADR 0003 has the reasoning and the 15/15 cross-check against
+  Hayabusa on real EVTX. **Zircolite was rejected: not on PyPI, so unlockable.**
+- Three semantics are load-bearing and tested: absent fields materialise as NULL
+  columns (must not raise); numeric strings are coerced on load (without it the
+  AS-REP rule silently stops matching); UInt64 keyword masks are stored as text.
+- The case loader **rejects** a benign case whose EventID no malicious case uses
+  — the old fixture set's only negative was a different channel and proved
+  nothing. It also rejects a missing `why`, and any set lacking either label.
+- **Read FP rate, not precision.** Precision moves with the authored
+  malicious:benign ratio; FP rate and recall do not.
+- Findings: 4 bare-EventID rules sit at **FP rate 1.00**; the 4104 obfuscation
+  rule is at 0.67 (it fires on `-join`); `proc_creation_win_encoded_powershell`
+  has a **real recall gap** — `powershell -e` is a valid abbreviation the rule
+  does not cover. All are recorded in the case sets, not hidden.
 
 Note on logsource: Hayabusa maps `category: process_creation` to Sysmon EID 1, so
 4688 Security-log samples won't match those. Rules tested on Security-log samples

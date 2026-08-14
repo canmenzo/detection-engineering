@@ -13,6 +13,9 @@ DETECTIONS = REPO / "detections"
 VENDORED = REPO / "vendored"
 VENDORED_REPORT = VENDORED / "report.json"
 
+EVALS = REPO / "evals"
+EVAL_RESULTS = EVALS / "results.json"
+
 FIXTURES = REPO / "tests" / "fixtures"
 CONVERSION_ONLY = REPO / "tests" / "conversion_only.txt"
 

@@ -1,0 +1,89 @@
+description: >
+  Impacket wmiexec/smbexec/atexec output redirection (Sysmon EID 1). The rule
+  looks for a command line — or a parent command line — containing both the
+  loopback admin-share prefix \\127.0.0.1\ and the __ semaphore filename prefix.
+
+  Benign cases are ordinary loopback share access and ordinary use of
+  double-underscore filenames, separately. The rule's discrimination rests
+  entirely on the two appearing together, so the benign set exercises each half
+  on its own.
+cases:
+  - name: wmiexec_output_redirect
+    label: malicious
+    why: the wmiexec signature — cmd /Q /c with output to a loopback ADMIN$ semaphore
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\cmd.exe
+      CommandLine: >-
+        cmd.exe /Q /c whoami 1> \\127.0.0.1\ADMIN$\__1700000000.00 2>&1
+      ParentImage: C:\Windows\System32\wbem\WmiPrvSE.exe
+      ParentCommandLine: C:\Windows\system32\wbem\wmiprvse.exe -secured -Embedding
+
+  - name: wmiexec_parent_commandline
+    label: malicious
+    why: >-
+      child process whose parent carries the pattern — the rule checks
+      ParentCommandLine so post-exploitation children are caught too
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\whoami.exe
+      CommandLine: whoami
+      ParentImage: C:\Windows\System32\cmd.exe
+      ParentCommandLine: >-
+        cmd.exe /Q /c whoami 1> \\127.0.0.1\C$\__output 2>&1
+
+  - name: smbexec_c_share_output
+    label: malicious
+    why: smbexec variant writing to C$ rather than ADMIN$
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\cmd.exe
+      CommandLine: cmd.exe /Q /c ipconfig /all 1> \\127.0.0.1\C$\__1700000123.45 2>&1
+      ParentImage: C:\Windows\System32\services.exe
+      ParentCommandLine: C:\Windows\system32\services.exe
+
+  - name: loopback_share_normal_copy
+    label: benign
+    why: >-
+      an admin copying a file over the loopback admin share. Has \\127.0.0.1\ but
+      no __ semaphore, so the AND is what keeps it quiet.
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\xcopy.exe
+      CommandLine: xcopy.exe C:\build\app.msi \\127.0.0.1\C$\Installers\ /Y
+      ParentImage: C:\Windows\System32\cmd.exe
+      ParentCommandLine: cmd.exe /c deploy.bat
+
+  - name: double_underscore_filename
+    label: benign
+    why: >-
+      a build script touching a __pycache__ path. Has __ but no loopback share —
+      the other half of the AND.
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\cmd.exe
+      CommandLine: cmd.exe /c rmdir /s /q C:\src\app\__pycache__
+      ParentImage: C:\Windows\explorer.exe
+      ParentCommandLine: C:\Windows\Explorer.EXE
+
+  - name: remote_share_with_semaphore_name
+    label: benign
+    why: >-
+      __ filename on a real remote host rather than loopback; the rule is
+      specifically about loopback self-redirection
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\cmd.exe
+      CommandLine: cmd.exe /c type \\fileserver01\share$\__manifest.txt
+      ParentImage: C:\Windows\System32\cmd.exe
+      ParentCommandLine: cmd.exe /c build.bat
+
+  - name: ordinary_command_no_redirect
+    label: benign
+    why: plain command execution, neither half present
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\whoami.exe
+      CommandLine: whoami /groups
+      ParentImage: C:\Windows\System32\cmd.exe
+      ParentCommandLine: cmd.exe

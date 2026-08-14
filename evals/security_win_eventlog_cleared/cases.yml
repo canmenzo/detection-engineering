@@ -1,0 +1,61 @@
+description: >
+  Security log cleared (EID 1102). The rule is a bare EventID match, so every
+  benign 1102 in this set is a false positive by construction and the FP rate
+  will be 1.0. That number needs reading with the base rate in mind: 1102 is
+  genuinely rare on a healthy host, so a rule that alerts on all of them can
+  still be operationally sane. What the set does show is that this rule carries
+  no discriminating logic at all — it cannot tell an attacker covering tracks
+  from an admin clearing a noisy log, and everything downstream is triage.
+cases:
+  - name: cleared_after_credential_theft
+    label: malicious
+    why: log cleared by a non-admin-hours session shortly after credential access
+    event:
+      EventID: 1102
+      SubjectUserName: jdoe
+      SubjectDomainName: CORP
+      SubjectLogonId: "0x3e7f21"
+      Channel: Security
+
+  - name: cleared_by_service_account
+    label: malicious
+    why: a service account has no business clearing the Security log
+    event:
+      EventID: 1102
+      SubjectUserName: svc-backup
+      SubjectDomainName: CORP
+      SubjectLogonId: "0x4a91b2"
+      Channel: Security
+
+  - name: cleared_from_remote_session
+    label: malicious
+    why: log cleared during a lateral-movement session on a file server
+    event:
+      EventID: 1102
+      SubjectUserName: admmig
+      SubjectDomainName: OFFSEC
+      SubjectLogonId: "0x7c1a45"
+      Channel: Security
+
+  - name: admin_clears_during_troubleshooting
+    label: benign
+    why: >-
+      a sysadmin clearing the Security log to get a clean capture while chasing
+      an auth problem. Indistinguishable from the malicious cases on this event
+      alone — which is the finding.
+    event:
+      EventID: 1102
+      SubjectUserName: administrator
+      SubjectDomainName: CORP
+      SubjectLogonId: "0x1f4c2a"
+      Channel: Security
+
+  - name: cleared_before_decommission
+    label: benign
+    why: host being wiped and repurposed; logs cleared as part of the runbook
+    event:
+      EventID: 1102
+      SubjectUserName: svc-imaging
+      SubjectDomainName: CORP
+      SubjectLogonId: "0x2b8d13"
+      Channel: Security

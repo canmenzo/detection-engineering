@@ -1,0 +1,85 @@
+description: >
+  Account added to a privileged local group (EID 4732), matched on the group's
+  well-known SID: Administrators (544), Backup Operators (551), Remote Desktop
+  Users (555) and Remote Management Users (562). Benign cases are additions to
+  those same groups through sanctioned processes, plus additions to
+  non-privileged groups that must not match.
+cases:
+  - name: added_to_administrators_by_user
+    label: malicious
+    why: privilege escalation — a standard user adding an account to local admins
+    event:
+      EventID: 4732
+      TargetSid: S-1-5-32-544
+      TargetUserName: Administrators
+      MemberSid: S-1-5-21-1004336348-1177238915-682003330-1108
+      MemberName: CORP\jdoe
+      SubjectUserName: jdoe
+
+  - name: added_to_backup_operators
+    label: malicious
+    why: Backup Operators grants file access that bypasses ACLs — a quiet escalation path
+    event:
+      EventID: 4732
+      TargetSid: S-1-5-32-551
+      TargetUserName: Backup Operators
+      MemberSid: S-1-5-21-1004336348-1177238915-682003330-1131
+      MemberName: CORP\svc-web
+      SubjectUserName: WEB01$
+
+  - name: added_to_remote_management_users
+    label: malicious
+    why: grants WinRM access, enabling remote execution for later movement
+    event:
+      EventID: 4732
+      TargetSid: S-1-5-32-562
+      TargetUserName: Remote Management Users
+      MemberSid: S-1-5-21-1004336348-1177238915-682003330-1142
+      MemberName: CORP\support1
+      SubjectUserName: admmig
+
+  - name: helpdesk_grants_rdp_access
+    label: benign
+    why: >-
+      sanctioned Remote Desktop Users addition through the helpdesk process.
+      Fires, because the rule cannot see the ticket behind it.
+    event:
+      EventID: 4732
+      TargetSid: S-1-5-32-555
+      TargetUserName: Remote Desktop Users
+      MemberSid: S-1-5-21-1004336348-1177238915-682003330-1201
+      MemberName: CORP\contractor3
+      SubjectUserName: helpdesk-tech2
+
+  - name: imaging_adds_corpadmin
+    label: benign
+    why: provisioning adding the standard admin group membership during a build
+    event:
+      EventID: 4732
+      TargetSid: S-1-5-32-544
+      TargetUserName: Administrators
+      MemberSid: S-1-5-21-1004336348-1177238915-682003330-1002
+      MemberName: CORP\Workstation Admins
+      SubjectUserName: svc-imaging
+
+  - name: added_to_users_group
+    label: benign
+    why: ordinary Users group membership; not a privileged SID, must not match
+    event:
+      EventID: 4732
+      TargetSid: S-1-5-32-545
+      TargetUserName: Users
+      MemberSid: S-1-5-21-1004336348-1177238915-682003330-1150
+      MemberName: CORP\newstarter
+      SubjectUserName: helpdesk-tech2
+
+  - name: added_to_performance_log_users
+    label: benign
+    why: monitoring agent group; non-privileged SID that must not match
+    event:
+      EventID: 4732
+      TargetSid: S-1-5-32-559
+      TargetUserName: Performance Log Users
+      MemberSid: S-1-5-21-1004336348-1177238915-682003330-1160
+      MemberName: CORP\svc-monitor
+      SubjectUserName: svc-deploy

@@ -349,6 +349,7 @@ dependencies = [
     { name = "pysigma" },
     { name = "pysigma-backend-kusto" },
     { name = "pysigma-backend-splunk" },
+    { name = "pysigma-backend-sqlite" },
     { name = "pyyaml" },
     { name = "sigma-cli" },
 ]
@@ -369,6 +370,7 @@ requires-dist = [
     { name = "pysigma", specifier = ">=1.3,<2.0" },
     { name = "pysigma-backend-kusto", specifier = ">=1.0,<2.0" },
     { name = "pysigma-backend-splunk", specifier = ">=2.1,<3.0" },
+    { name = "pysigma-backend-sqlite", specifier = ">=1.2,<2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16" },
@@ -1292,6 +1294,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/57/f2/a7bd243d9d597b52658cfb1c7bea415ffe7cb864cd12c5630e13f026781b/pysigma_backend_splunk-2.1.0.tar.gz", hash = "sha256:ca4d2d0e4c7f766a4daf551489ab20366578163e6ac838fc59bb6d3f2a1423e9", size = 18736, upload-time = "2026-03-22T22:46:44.002Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/41/38/a2c7d959abcd6690f10d430707be1ed60de3ca406e0bd6af8f59e0a72439/pysigma_backend_splunk-2.1.0-py3-none-any.whl", hash = "sha256:90da654b17c7a396ba23af14a29ed559c562ae5bb60c4ceda47cd9744dd3581c", size = 21094, upload-time = "2026-03-22T22:46:42.687Z" },
+]
+
+[[package]]
+name = "pysigma-backend-sqlite"
+version = "1.2.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pysigma" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d6/63/475bd7c0ea1bb45408e934394f2873328923ef6aca391e7233b5295121c4/pysigma_backend_sqlite-1.2.4.tar.gz", hash = "sha256:c83411be2cbddeb9d8aea4e429535c7687ac6c0f45c1b7ddcf182d6e8e643474", size = 16023, upload-time = "2026-08-03T07:17:02.521Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e6/f2/c3f3f3cedec16c8a6850b85d709e5c9e6c631b0adc2d68b215614c1da066/pysigma_backend_sqlite-1.2.4-py3-none-any.whl", hash = "sha256:30fcebe9c114872725bced20c7aaa2deffd9e43c29e893c4176d6dd5c348d61a", size = 14995, upload-time = "2026-08-03T07:17:01.343Z" },
 ]
 
 [[package]]

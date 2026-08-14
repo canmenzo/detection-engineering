@@ -1,0 +1,102 @@
+description: >
+  LSASS credential access (Sysmon EID 10) — a process opening lsass.exe with an
+  access mask that permits memory reads.
+
+  Benign cases model a STOCK Windows host with Microsoft Defender, using publicly
+  documented process names only. This is deliberately not a real fleet: naming a
+  specific employer's EDR agents would be both non-portable and a disclosure. On
+  an estate running a third-party EDR, that agent's own lsass access would need
+  adding here before these numbers mean anything locally.
+cases:
+  - name: mimikatz_full_access
+    label: malicious
+    why: 0x1fffff is PROCESS_ALL_ACCESS — the classic credential-dumper signature
+    event:
+      EventID: 10
+      SourceImage: C:\Users\Public\mimikatz.exe
+      TargetImage: C:\Windows\System32\lsass.exe
+      GrantedAccess: "0x1fffff"
+      CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9d234|C:\Windows\System32\KERNELBASE.dll+2a1cd
+
+  - name: procdump_memory_read
+    label: malicious
+    why: 0x1410 is the VM_READ + QUERY_INFORMATION combination used to dump memory
+    event:
+      EventID: 10
+      SourceImage: C:\Users\Public\procdump64.exe
+      TargetImage: C:\Windows\System32\lsass.exe
+      GrantedAccess: "0x1410"
+      CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9d234
+
+  - name: comsvcs_minidump
+    label: malicious
+    why: rundll32 abusing comsvcs.dll MiniDump — a fileless dumping technique
+    event:
+      EventID: 10
+      SourceImage: C:\Windows\System32\rundll32.exe
+      TargetImage: C:\Windows\System32\lsass.exe
+      GrantedAccess: "0x1438"
+      CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9d234|C:\Windows\system32\comsvcs.dll+1c5a0
+
+  - name: custom_tool_1010
+    label: malicious
+    why: 0x1010 grants VM_READ without the noisier rights — a quieter dumper
+    event:
+      EventID: 10
+      SourceImage: C:\Windows\Temp\dump.exe
+      TargetImage: C:\Windows\System32\lsass.exe
+      GrantedAccess: "0x1010"
+      CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9d234
+
+  - name: defender_scans_lsass
+    label: benign
+    why: >-
+      Microsoft Defender's scanning engine opens lsass with a read mask as normal
+      operation. Fires. On any real host this is the dominant false positive for
+      this rule, and it is why an allow-list is mandatory before deployment.
+    event:
+      EventID: 10
+      SourceImage: C:\ProgramData\Microsoft\Windows Defender\Platform\4.18.24010.7-0\MsMpEng.exe
+      TargetImage: C:\Windows\System32\lsass.exe
+      GrantedAccess: "0x1410"
+      CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9d234
+
+  - name: wmiprvse_queries_process
+    label: benign
+    why: WMI provider host queries process information with a low-rights mask
+    event:
+      EventID: 10
+      SourceImage: C:\Windows\System32\wbem\WmiPrvSE.exe
+      TargetImage: C:\Windows\System32\lsass.exe
+      GrantedAccess: "0x1400"
+      CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9d234
+
+  - name: taskmgr_queries_limited
+    label: benign
+    why: Task Manager opens with QUERY_LIMITED_INFORMATION only — not a read mask
+    event:
+      EventID: 10
+      SourceImage: C:\Windows\System32\Taskmgr.exe
+      TargetImage: C:\Windows\System32\lsass.exe
+      GrantedAccess: "0x1000"
+      CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9d234
+
+  - name: csrss_normal_handle
+    label: benign
+    why: core Windows subsystem holding a handle with rights the rule does not list
+    event:
+      EventID: 10
+      SourceImage: C:\Windows\System32\csrss.exe
+      TargetImage: C:\Windows\System32\lsass.exe
+      GrantedAccess: "0x1478"
+      CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9d234
+
+  - name: svchost_opens_other_process
+    label: benign
+    why: a read mask against a non-lsass target must not match; proves the target anchor
+    event:
+      EventID: 10
+      SourceImage: C:\Windows\System32\svchost.exe
+      TargetImage: C:\Windows\System32\spoolsv.exe
+      GrantedAccess: "0x1fffff"
+      CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9d234
