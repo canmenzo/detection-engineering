@@ -6,6 +6,17 @@ description: >
   still be operationally sane. What the set does show is that this rule carries
   no discriminating logic at all — it cannot tell an attacker covering tracks
   from an admin clearing a noisy log, and everything downstream is triage.
+thresholds:
+  min_precision: 0.55
+  max_fp_rate: 1.0
+  justification: >-
+    Accepts a 100% false-positive rate deliberately. This rule has no
+    discriminating logic and cannot acquire any: a cleared log carries no
+    evidence of why it was cleared. It stays a high-severity alert because the
+    base rate is near zero — 1102 does not occur on a healthy host — so the
+    absolute alert volume is negligible even at FP rate 1.0. That is a base-rate
+    argument, not a quality one, and it is the only reason this bar is set here.
+
 cases:
   - name: cleared_after_credential_theft
     label: malicious

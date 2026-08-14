@@ -30,8 +30,28 @@ def has_fixture(stem: str, exempt: set[str]) -> bool:
     return stem in exempt or sample_count(stem) > 0
 
 
+def check_condition(detection: object) -> list[str]:
+    """A folded/block YAML scalar in `condition:` is silently fatal.
+
+    `condition: >` yields a trailing newline. pySigma and the SQL backend accept
+    it; Hayabusa fails to parse the rule and reports only "Rule parsing errors: 1"
+    without naming it, so the rule stops running with no obvious signal. Keep
+    conditions on one line.
+    """
+    if not isinstance(detection, dict):
+        return []
+    condition = detection.get("condition")
+    conditions = condition if isinstance(condition, list) else [condition]
+    return [
+        f"condition is not a single-line scalar (avoid '>' and '|'): {c!r}"
+        for c in conditions
+        if isinstance(c, str) and (c != c.strip() or "\n" in c)
+    ]
+
+
 def validate_rule(rule: Rule, vocab: Vocabulary, exempt: set[str]) -> list[str]:
     errors: list[str] = []
+    errors.extend(check_condition(rule.doc.get("detection")))
 
     for field in REQUIRED_FIELDS:
         if field not in rule.doc or rule.doc[field] in (None, "", []):

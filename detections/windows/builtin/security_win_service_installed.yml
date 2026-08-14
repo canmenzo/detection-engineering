@@ -1,12 +1,17 @@
-title: New Windows Service Installed
+title: Suspicious Windows Service Installed
 id: 8d1a4e63-5b2c-49f7-a3d6-7c9b2e1f4a85
 status: experimental
 description: >
-  Detects installation of a new Windows service (EID 4697). Service creation is a
-  classic persistence and privilege-escalation vector — PsExec, SMBexec, Cobalt
-  Strike and Mimikatz drivers all register services that execute as SYSTEM.
-  Services whose image path is a script interpreter, a temp/ADMIN$ path, or a
-  random-looking name warrant investigation.
+  Detects installation of a Windows service whose image path is a script
+  interpreter, a LOLBIN, a user-writable location, or a bare executable dropped
+  directly in the Windows root (EID 4697). Service creation is a classic
+  persistence and privilege-escalation vector — PsExec, SMBexec, Cobalt Strike
+  and Mimikatz drivers all register services that execute as SYSTEM.
+
+  Alerting on every 4697 was measured at a 100% false-positive rate against the
+  benign half of this rule's eval set: every driver, agent and application
+  installer registers services. The discriminators below are what make this a
+  detection rather than an event forwarder.
 references:
   - https://attack.mitre.org/techniques/T1543/003/
   - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=4697
@@ -23,9 +28,46 @@ logsource:
 detection:
   selection:
     EventID: 4697
-  condition: selection
+  susp_interpreter:
+    ServiceFileName|contains:
+      - 'powershell'
+      - 'pwsh'
+      - '%COMSPEC%'
+      - 'cmd.exe'
+      - 'cmd /c'
+      - 'rundll32'
+      - 'regsvr32'
+      - 'mshta'
+      - 'wscript'
+      - 'cscript'
+      - 'certutil'
+      - 'bitsadmin'
+      - 'FromBase64String'
+      - ' -enc'
+      - ' -e '
+  susp_location:
+    ServiceFileName|contains:
+      - '\Temp\'
+      - '\Users\Public\'
+      - '\AppData\'
+      - '\ProgramData\'
+      - '\Downloads\'
+      - '\PerfLogs\'
+  # A bare executable dropped straight into the Windows root, the PsExec pattern.
+  susp_windows_root:
+    ServiceFileName|startswith: '%SystemRoot%\'
+    ServiceFileName|endswith: '.exe'
+  # ...but %SystemRoot%\System32\svchost.exe -k netsvcs is how half of Windows
+  # ships, so the root check only applies outside the system directories. This
+  # filter is deliberately scoped to that one branch, not to the whole rule.
+  filter_system_dirs:
+    ServiceFileName|contains:
+      - '\System32\'
+      - '\SysWOW64\'
+      - '\WinSxS\'
+  condition: selection and (susp_interpreter or susp_location or (susp_windows_root and not filter_system_dirs))
 falsepositives:
-  - Legitimate software installs and driver updates register services. Baseline
-    ServiceName and ServiceFileName; alert on interpreter/temp-path images and
-    services installed during interactive or remote-admin sessions.
-level: medium
+  - Management agents that legitimately register a service wrapping a script
+    interpreter. Baseline ServiceName and ServiceFileName per estate.
+  - Vendor installers that stage a service binary under ProgramData.
+level: high

@@ -7,6 +7,15 @@ description: >
   specific employer's EDR agents would be both non-portable and a disclosure. On
   an estate running a third-party EDR, that agent's own lsass access would need
   adding here before these numbers mean anything locally.
+thresholds:
+  min_precision: 0.75
+  max_fp_rate: 0.25
+  justification: >-
+    Defender's scanning engine opens lsass with a read mask as normal operation,
+    and any AV or EDR will do the same. This rule is not deployable without a
+    per-estate allow-list of legitimate accessors; the threshold reflects the
+    rule as written, before that allow-list exists.
+
 cases:
   - name: mimikatz_full_access
     label: malicious

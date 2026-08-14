@@ -4,6 +4,16 @@ description: >
   this set is where the "alert on every 4698" approach is most obviously
   untenable — the benign cases here are all things that happen daily on a
   managed estate.
+thresholds:
+  min_precision: 0.70
+  max_fp_rate: 0.30
+  justification: >-
+    Scheduling a .cmd or .ps1 script is legitimate administrative automation and
+    is indistinguishable from persistence at the event level. This is already a
+    large improvement on the bare EventID match it replaced (precision 0.43 ->
+    0.75, FP rate 1.00 -> 0.25); closing the rest needs the task author checked
+    against an approved automation identity.
+
 cases:
   - name: task_runs_encoded_powershell_as_system
     label: malicious

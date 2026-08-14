@@ -1,11 +1,15 @@
-title: Scheduled Task Created
+title: Suspicious Scheduled Task Created
 id: 7b4c2f81-9d3e-4a16-b5c8-1e6f2a9d4c70
 status: experimental
 description: >
-  Detects creation of a Windows scheduled task (EID 4698). Scheduled tasks are a
-  common execution and persistence mechanism: attackers register tasks to run
-  payloads at logon, on a timer, or as SYSTEM. Remote task creation (ATexec) and
-  tasks pointing at script interpreters or temp paths are especially suspect.
+  Detects creation of a scheduled task whose action runs a script interpreter, a
+  LOLBIN, or a binary in a user-writable location (EID 4698). Scheduled tasks are
+  a common execution and persistence mechanism: attackers register tasks to run
+  payloads at logon, on a timer, or as SYSTEM.
+
+  Alerting on every 4698 was measured at a 100% false-positive rate against the
+  benign half of this rule's eval set — installers, updaters and management
+  agents create tasks constantly. The action content is where the signal is.
 references:
   - https://attack.mitre.org/techniques/T1053/005/
   - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=4698
@@ -23,9 +27,35 @@ logsource:
 detection:
   selection:
     EventID: 4698
-  condition: selection
+  susp_command:
+    TaskContent|contains:
+      - 'powershell'
+      - 'pwsh'
+      - 'cmd.exe'
+      - 'rundll32'
+      - 'regsvr32'
+      - 'mshta'
+      - 'wscript'
+      - 'cscript'
+      - 'certutil'
+      - 'bitsadmin'
+      - 'FromBase64String'
+      - ' -enc'
+      - '.bat<'
+      - '.cmd<'
+      - '.vbs<'
+      - '.js<'
+      - '.ps1<'
+  susp_location:
+    TaskContent|contains:
+      - '\Temp\'
+      - '\Users\Public\'
+      - '\AppData\'
+      - '\Downloads\'
+      - '\PerfLogs\'
+  condition: selection and (susp_command or susp_location)
 falsepositives:
-  - Software installers and management agents register tasks legitimately.
-    Baseline TaskName and the author account; alert on tasks created by
-    non-administrative or remote sessions.
-level: medium
+  - Administrative automation that schedules a .cmd or .ps1 script. This is the
+    rule's main residual false positive; baseline by task author and path.
+  - Management agents whose task actions invoke an interpreter.
+level: high

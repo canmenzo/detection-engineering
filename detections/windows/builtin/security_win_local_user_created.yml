@@ -2,10 +2,16 @@ title: Local User Account Created
 id: 2c9f6b34-1a7d-4e58-9c2b-3d8e5a1f6b29
 status: experimental
 description: >
-  Detects creation of a new user account (EID 4720). Adversaries create local or
+  Records creation of a new user account (EID 4720). Adversaries create local or
   domain accounts to establish persistence and maintain access independent of any
-  compromised credential. Pair with group-membership changes (4732/4728) to spot
-  freshly created accounts being granted privileges.
+  compromised credential.
+
+  This is an AUDIT rule, not an alert. It has no discriminating logic and account
+  creation is routine on a managed estate, so it was measured at a 100%
+  false-positive rate against its benign cases. Its value is as a trail to
+  correlate against: pair with group-membership changes (4732/4728) to spot a
+  freshly created account being granted privileges, which is the signal worth
+  paging on.
 references:
   - https://attack.mitre.org/techniques/T1136/001/
   - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=4720
@@ -26,4 +32,4 @@ falsepositives:
   - Help-desk and provisioning workflows create accounts routinely. Baseline the
     creating account (SubjectUserName) and alert on creation outside known
     provisioning systems or by recently compromised accounts.
-level: medium
+level: informational

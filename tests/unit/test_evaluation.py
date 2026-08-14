@@ -9,9 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from detkit.evaluation.cases import CaseError, load_case_set
+from detkit.evaluation.cases import CaseError, Thresholds, load_case_set
 from detkit.evaluation.engine import matching_indices, normalise
-from detkit.evaluation.metrics import score
+from detkit.evaluation.metrics import Metrics, score
+from detkit.evaluation.runner import breaches
 
 QUERY = "SELECT * FROM <TABLE_NAME> WHERE EventID=4688 AND CommandLine LIKE '%certutil%'"
 
@@ -142,3 +143,47 @@ def test_rejects_unknown_label(tmp_path: Path) -> None:
     body = GOOD.replace("label: benign", "label: suspicious")
     with pytest.raises(CaseError, match="expected one of"):
         load_case_set(_write(tmp_path, body))
+
+
+def test_default_thresholds_are_strict(tmp_path: Path) -> None:
+    case_set = load_case_set(_write(tmp_path, GOOD))
+    assert case_set.thresholds == Thresholds()
+    assert not case_set.thresholds.is_lenient
+
+
+def test_lenient_thresholds_require_a_justification(tmp_path: Path) -> None:
+    body = "thresholds:\n  min_precision: 0.5\n" + GOOD
+    with pytest.raises(CaseError, match="need a 'justification'"):
+        load_case_set(_write(tmp_path, body))
+
+
+def test_lenient_thresholds_accepted_with_justification(tmp_path: Path) -> None:
+    body = "thresholds:\n  min_precision: 0.5\n  justification: measured, and here is why\n" + GOOD
+    case_set = load_case_set(_write(tmp_path, body))
+    assert case_set.thresholds.min_precision == 0.5
+
+
+def test_rejects_unknown_threshold_key(tmp_path: Path) -> None:
+    body = "thresholds:\n  min_prescision: 0.5\n" + GOOD
+    with pytest.raises(CaseError, match="unknown threshold key"):
+        load_case_set(_write(tmp_path, body))
+
+
+def test_breaches_reports_each_failing_metric() -> None:
+    metrics = Metrics(tp=1, fp=3, fn=1, tn=1)  # precision .25, recall .5, fp rate .75
+    failures = breaches(metrics, Thresholds())
+    assert len(failures) == 3
+    assert any("precision" in f for f in failures)
+    assert any("recall" in f for f in failures)
+    assert any("FP rate" in f for f in failures)
+
+
+def test_breaches_empty_when_thresholds_met() -> None:
+    metrics = Metrics(tp=4, fp=0, fn=0, tn=4)
+    assert breaches(metrics, Thresholds()) == []
+
+
+def test_breaches_ignores_undefined_metrics() -> None:
+    """A rule that never fires has no precision; that is not a threshold breach."""
+    metrics = Metrics(tp=0, fp=0, fn=0, tn=3)
+    assert breaches(metrics, Thresholds(min_recall=0.0)) == []

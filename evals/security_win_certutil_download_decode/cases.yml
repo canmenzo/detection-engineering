@@ -4,6 +4,15 @@ description: >
   line. Benign cases are real certutil administration that a Windows admin or a
   PKI script would run, including the ones that legitimately use -encode and
   -decode, which is where this rule is expected to cost the analyst something.
+thresholds:
+  min_precision: 0.60
+  max_fp_rate: 0.40
+  justification: >-
+    -encode and -decode are legitimate certutil verbs used by PKI enrolment
+    scripts and management agents. Dropping them would raise precision but lose
+    payload-staging coverage, which is the more valuable half of this rule.
+    Keeping them and allow-listing the known callers is the right trade.
+
 cases:
   - name: urlcache_download_payload
     label: malicious

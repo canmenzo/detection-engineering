@@ -2,11 +2,18 @@ title: Suspicious Encoded or Obfuscated PowerShell ScriptBlock
 id: 9c2e7a14-5b3d-4e6f-8a91-2d4c6b8e1f03
 status: experimental
 description: >
-  Detects PowerShell ScriptBlock logging (EID 4104) containing encoding and
-  obfuscation primitives commonly emitted by Invoke-Obfuscation and malware
-  loaders (Emotet, credential phishers): base64 decoding, char-array
-  reconstruction, integer decoding, and -bxor deobfuscation. These are rare in
-  legitimate interactive use and are a strong signal of staged/obfuscated payloads.
+  Surfaces PowerShell ScriptBlock logging (EID 4104) containing encoding and
+  obfuscation primitives emitted by Invoke-Obfuscation and malware loaders:
+  base64 decoding, char-array reconstruction, integer decoding, and -bxor
+  deobfuscation.
+
+  This is a HUNTING query, not an alert. An earlier version of this description
+  claimed these primitives are "rare in legitimate use"; measuring it showed the
+  opposite — `-join` and `[Convert]::ToInt` appear throughout ordinary
+  administrative scripting, and the rule fires on two thirds of the benign
+  PowerShell in its eval set. Use it to rank script blocks for review. Turning it
+  into an alert requires scoring several primitives together rather than matching
+  any one of them.
 references:
   - https://attack.mitre.org/techniques/T1059/001/
   - https://attack.mitre.org/techniques/T1027/
@@ -36,4 +43,4 @@ detection:
 falsepositives:
   - Installer and packaging scripts that legitimately reconstruct strings from
     byte arrays. Baseline known-good script hashes before alerting at high severity.
-level: high
+level: informational

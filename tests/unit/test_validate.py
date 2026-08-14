@@ -8,7 +8,7 @@ import pytest
 
 from detkit.attack import Vocabulary
 from detkit.rules import Rule, load_rule
-from detkit.validate import has_technique_tag, validate_rule
+from detkit.validate import check_condition, has_technique_tag, validate_rule
 
 VOCAB = Vocabulary(
     version="19.2",
@@ -81,6 +81,25 @@ def test_unknown_tag_is_reported(tmp_path: Path) -> None:
     rule = _rule(tmp_path, COMPLETE.replace("attack.t1059.001", "attack.t9999"))
     errors = validate_rule(rule, VOCAB, exempt={"example"})
     assert any("unknown ATT&CK technique" in e for e in errors)
+
+
+def test_accepts_single_line_condition() -> None:
+    assert check_condition({"condition": "selection and not filter"}) == []
+
+
+@pytest.mark.parametrize("condition", ["selection and filter\n", "selection\nand filter"])
+def test_rejects_multiline_condition(condition: str) -> None:
+    """A folded scalar parses fine here but silently breaks Hayabusa's parser."""
+    errors = check_condition({"condition": condition})
+    assert len(errors) == 1
+    assert "single-line scalar" in errors[0]
+
+
+def test_multiline_condition_fails_the_gate(tmp_path: Path) -> None:
+    body = COMPLETE.replace("  condition: selection\n", "  condition: >\n    selection\n")
+    rule = _rule(tmp_path, body)
+    errors = validate_rule(rule, VOCAB, exempt={"example"})
+    assert any("single-line scalar" in e for e in errors)
 
 
 @pytest.mark.parametrize(

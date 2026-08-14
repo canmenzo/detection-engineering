@@ -95,9 +95,22 @@ jobs:
           enable-cache: true
       - run: uv sync --locked --all-extras
       - name: score every rule against its labelled events
-        # Reports precision / recall / FP rate per rule. Thresholds do not gate
-        # the build yet — that lands with the per-rule bars and the ratchet.
-        run: uv run detkit eval
+        # Fails the build when a rule drops below the thresholds declared in its
+        # own evals/<stem>/cases.yml. Results are published to the run summary so
+        # every PR carries its detection-quality numbers.
+        run: |
+          set +e
+          uv run detkit eval | tee eval-output.txt
+          status="${PIPESTATUS[0]}"
+          set -e
+          {
+            echo '## Detection quality'
+            echo
+            echo '```'
+            cat eval-output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
   vendored:
     # Third-party SigmaHQ corpus: NOT held to the fixture gate (see vendored/README.md).
