@@ -30,25 +30,26 @@ OUT = REPO / "coverage" / "coverage.png"
 TECHNIQUE_RE = re.compile(r"^attack\.(t\d{4}(?:\.\d{3})?)$", re.IGNORECASE)
 TACTIC_RE = re.compile(r"^attack\.([a-z_-]+)$", re.IGNORECASE)
 
-# SigmaHQ tags tactics with hyphens and two non-ATT&CK tokens that both fall
-# under Defense Evasion (TA0005): "stealth" (general evasion) and
-# "defense-impairment" (T1562 Impair Defenses).
-TACTIC_ALIASES = {"stealth": "defense_evasion", "defense_impairment": "defense_evasion"}
+# ATT&CK v19.1 renamed TA0005 Defense Evasion to "stealth" and split TA0112
+# "defense-impairment" out of it. Older corpora (and older versions of these
+# rules) still carry the retired token, so it is folded into its successor.
+TACTIC_ALIASES = {"defense-evasion": "stealth"}
 
-# ATT&CK enterprise tactics in kill-chain order.
+# ATT&CK enterprise tactics in kill-chain order, keyed by ATT&CK shortname.
 TACTIC_ORDER = [
     ("reconnaissance", "Recon"),
-    ("resource_development", "Resource\nDev"),
-    ("initial_access", "Initial\nAccess"),
+    ("resource-development", "Resource\nDev"),
+    ("initial-access", "Initial\nAccess"),
     ("execution", "Execution"),
     ("persistence", "Persistence"),
-    ("privilege_escalation", "Priv\nEsc"),
-    ("defense_evasion", "Defense\nEvasion"),
-    ("credential_access", "Cred\nAccess"),
+    ("privilege-escalation", "Priv\nEsc"),
+    ("stealth", "Stealth"),
+    ("defense-impairment", "Defense\nImpairment"),
+    ("credential-access", "Cred\nAccess"),
     ("discovery", "Discovery"),
-    ("lateral_movement", "Lateral\nMovement"),
+    ("lateral-movement", "Lateral\nMovement"),
     ("collection", "Collection"),
-    ("command_and_control", "C2"),
+    ("command-and-control", "C2"),
     ("exfiltration", "Exfil"),
     ("impact", "Impact"),
 ]
@@ -57,7 +58,7 @@ CELLS_PER_ROW = 6
 
 
 def norm_tactic(token: str) -> str:
-    token = token.lower().replace("-", "_")
+    token = token.lower().replace("_", "-")
     return TACTIC_ALIASES.get(token, token)
 
 
@@ -69,10 +70,10 @@ def scan(root: Path):
     for rule in list(root.rglob("*.yml")) + list(root.rglob("*.yaml")):
         try:
             doc = yaml.safe_load(rule.read_text(encoding="utf-8"))
-        except yaml.YAMLError:
-            continue
+        except yaml.YAMLError as exc:
+            raise SystemExit(f"{rule}: unparseable YAML: {exc}") from exc
         if not isinstance(doc, dict):
-            continue
+            raise SystemExit(f"{rule}: not a YAML mapping")
         techs, tactics = [], []
         for tag in doc.get("tags") or []:
             if not isinstance(tag, str):

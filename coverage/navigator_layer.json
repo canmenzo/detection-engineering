@@ -4,7 +4,7 @@
   "versions": {
     "navigator": "4.9.1",
     "layer": "4.5",
-    "attack": "16"
+    "attack": "19"
   },
   "domain": "enterprise-attack",
   "techniques": [
@@ -42,12 +42,6 @@
       "techniqueID": "T1059.001",
       "score": 2,
       "comment": "2 detections",
-      "enabled": true
-    },
-    {
-      "techniqueID": "T1070.001",
-      "score": 1,
-      "comment": "1 detection",
       "enabled": true
     },
     {
@@ -93,13 +87,19 @@
       "enabled": true
     },
     {
-      "techniqueID": "T1562.001",
+      "techniqueID": "T1685",
       "score": 1,
       "comment": "1 detection",
       "enabled": true
     },
     {
-      "techniqueID": "T1562.004",
+      "techniqueID": "T1685.005",
+      "score": 1,
+      "comment": "1 detection",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1686.003",
       "score": 1,
       "comment": "1 detection",
       "enabled": true
