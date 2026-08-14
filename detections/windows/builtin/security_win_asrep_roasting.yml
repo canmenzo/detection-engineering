@@ -15,7 +15,7 @@ author: Can Ozmen
 date: 2026-06-24
 modified: 2026-06-24
 tags:
-  - attack.credential_access
+  - attack.credential-access
   - attack.t1558.004
 logsource:
   product: windows
@@ -23,7 +23,7 @@ logsource:
 detection:
   selection:
     EventID: 4768
-    PreAuthType: '0'
+    PreAuthType: 0
   filter_machine:
     TargetUserName|endswith: '$'
   condition: selection and not filter_machine

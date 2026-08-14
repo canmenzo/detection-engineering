@@ -16,7 +16,7 @@ date: 2026-06-24
 modified: 2026-06-24
 tags:
   - attack.execution
-  - attack.lateral_movement
+  - attack.lateral-movement
   - attack.t1047
 logsource:
   product: windows

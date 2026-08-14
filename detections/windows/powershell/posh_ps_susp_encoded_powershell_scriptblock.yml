@@ -16,6 +16,7 @@ date: 2026-06-23
 modified: 2026-06-23
 tags:
   - attack.execution
+  - attack.stealth
   - attack.t1059.001
   - attack.t1027
 logsource:
