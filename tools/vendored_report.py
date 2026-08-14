@@ -29,7 +29,17 @@ VENDORED = REPO / "vendored"
 OUT = VENDORED / "report.json"
 
 TECHNIQUE_RE = re.compile(r"^attack\.(t\d{4}(?:\.\d{3})?)$", re.IGNORECASE)
-TACTIC_RE = re.compile(r"^attack\.([a-z_]+)$", re.IGNORECASE)
+# Must allow hyphens: ATT&CK shortnames are hyphenated (credential-access), and a
+# [a-z_]+ pattern silently dropped every multi-word tactic in the corpus — the
+# report claimed 8 tactics where the corpus carries 15.
+TACTIC_RE = re.compile(r"^attack\.([a-z_-]+)$", re.IGNORECASE)
+
+TACTIC_ALIASES = {"defense-evasion": "stealth"}
+
+
+def norm_tactic(token: str) -> str:
+    token = token.lower().replace("_", "-")
+    return TACTIC_ALIASES.get(token, token)
 
 
 def _tags(doc) -> tuple[list[str], list[str]]:
@@ -43,19 +53,20 @@ def _tags(doc) -> tuple[list[str], list[str]]:
             continue
         ma = TACTIC_RE.match(tag.strip())
         if ma:
-            tactics.append(ma.group(1).lower())
+            tactics.append(norm_tactic(ma.group(1)))
     return techs, tactics
 
 
-def _try_backend():
-    """Return a Splunk backend instance, or None if pySigma isn't installed."""
-    try:
-        from sigma.backends.splunk import SplunkBackend
+def _backend():
+    """Return a Splunk backend instance.
 
-        return SplunkBackend()
-    except Exception as exc:  # pragma: no cover - import/env issue
-        print(f"convert smoke-test skipped: {exc}", file=sys.stderr)
-        return None
+    pySigma is a declared dependency. Swallowing an import failure here used to
+    leave attempted=0 and a null convert rate while still exiting 0 — the report
+    looked fine and had measured nothing.
+    """
+    from sigma.backends.splunk import SplunkBackend
+
+    return SplunkBackend()
 
 
 def main() -> int:
@@ -64,40 +75,42 @@ def main() -> int:
         print("no vendored rules found under vendored/", file=sys.stderr)
         return 1
 
-    backend = _try_backend()
-    from_yaml = None
-    if backend is not None:
-        from sigma.collection import SigmaCollection
+    backend = _backend()
+    from sigma.collection import SigmaCollection
 
-        from_yaml = SigmaCollection.from_yaml
+    from_yaml = SigmaCollection.from_yaml
 
     tech_counts: Counter = Counter()
     pairs: set[tuple[str, str]] = set()
     convertible = attempted = 0
+    error_counts: Counter = Counter()
     error_samples: list[str] = []
 
     for path in rules:
         try:
             doc = yaml.safe_load(path.read_text(encoding="utf-8"))
-        except yaml.YAMLError:
-            continue
+        except yaml.YAMLError as exc:
+            raise SystemExit(f"{path}: unparseable YAML: {exc}") from exc
         if not isinstance(doc, dict):
-            continue
+            raise SystemExit(f"{path}: not a YAML mapping")
         techs, tactics = _tags(doc)
         for t in techs:
             tech_counts[t] += 1
             for tac in tactics:
                 pairs.add((tac, t))
 
-        if from_yaml is not None:
-            attempted += 1
-            try:
-                backend.convert(from_yaml(path.read_text(encoding="utf-8")))
-                convertible += 1
-            except Exception as exc:
-                if len(error_samples) < 15:
-                    rel = path.relative_to(REPO).as_posix()
-                    error_samples.append(f"{rel}: {type(exc).__name__}")
+        attempted += 1
+        try:
+            backend.convert(from_yaml(path.read_text(encoding="utf-8")))
+            convertible += 1
+        except Exception as exc:
+            # Conversion failures are expected here (correlation rules,
+            # unsupported modifiers) and are reported rather than fatal — but
+            # every one is counted, not just the first 15.
+            error_counts[type(exc).__name__] += 1
+            if len(error_samples) < 15:
+                rel = path.relative_to(REPO).as_posix()
+                error_samples.append(f"{rel}: {type(exc).__name__}")
 
     by_tactic: dict[str, list[str]] = defaultdict(set)
     for tac, tech in pairs:
@@ -114,6 +127,7 @@ def main() -> int:
             "attempted": attempted,
             "convertible": convertible,
             "rate": round(convertible / attempted, 4) if attempted else None,
+            "error_counts": dict(error_counts.most_common()),
             "error_samples": error_samples,
         },
     }

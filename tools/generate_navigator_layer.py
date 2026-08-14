@@ -19,6 +19,7 @@ import yaml
 REPO = Path(__file__).resolve().parents[1]
 DETECTIONS = REPO / "detections"
 OUT = REPO / "coverage" / "navigator_layer.json"
+ATTACK_VERSION_FILE = REPO / ".attack-version"
 
 TECHNIQUE_RE = re.compile(r"^attack\.(t\d{4}(?:\.\d{3})?)$", re.IGNORECASE)
 
@@ -28,10 +29,10 @@ def collect() -> Counter:
     for rule in sorted(DETECTIONS.rglob("*.yml")) + sorted(DETECTIONS.rglob("*.yaml")):
         try:
             doc = yaml.safe_load(rule.read_text(encoding="utf-8"))
-        except yaml.YAMLError:
-            continue
+        except yaml.YAMLError as exc:
+            raise SystemExit(f"{rule}: unparseable YAML: {exc}") from exc
         if not isinstance(doc, dict):
-            continue
+            raise SystemExit(f"{rule}: not a YAML mapping")
         for tag in doc.get("tags") or []:
             if not isinstance(tag, str):
                 continue
@@ -55,7 +56,13 @@ def build_layer(counts: Counter) -> dict:
     return {
         "name": "Detection Coverage",
         "description": "Auto-generated from detections/ — do not edit by hand.",
-        "versions": {"navigator": "4.9.1", "layer": "4.5", "attack": "16"},
+        # ATT&CK release comes from the repo pin, not a hardcoded number that
+        # goes stale silently. validate_metadata.py fails if the pin drifts.
+        "versions": {
+            "navigator": "4.9.1",
+            "layer": "4.5",
+            "attack": ATTACK_VERSION_FILE.read_text(encoding="utf-8").strip().split(".")[0],
+        },
         "domain": "enterprise-attack",
         "techniques": techniques,
         "gradient": {

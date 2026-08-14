@@ -28,22 +28,34 @@ SITE = REPO / "site"
 OUT = SITE / "index.html"
 
 TECHNIQUE_RE = re.compile(r"^attack\.(t\d{4}(?:\.\d{3})?)$", re.IGNORECASE)
-TACTIC_RE = re.compile(r"^attack\.([a-z_]+)$", re.IGNORECASE)
+TACTIC_RE = re.compile(r"^attack\.([a-z_-]+)$", re.IGNORECASE)
+
+# ATT&CK v19.1 shortnames. TA0005 Defense Evasion became "stealth"; TA0112
+# "defense-impairment" was split out of it.
+TACTIC_ALIASES = {"defense-evasion": "stealth"}
 
 TACTIC_NAMES = {
+    "reconnaissance": "Reconnaissance",
+    "resource-development": "Resource Development",
+    "initial-access": "Initial Access",
     "execution": "Execution",
     "persistence": "Persistence",
-    "privilege_escalation": "Privilege Escalation",
-    "defense_evasion": "Defense Evasion",
-    "credential_access": "Credential Access",
-    "lateral_movement": "Lateral Movement",
-    "command_and_control": "Command & Control",
+    "privilege-escalation": "Privilege Escalation",
+    "stealth": "Stealth",
+    "defense-impairment": "Defense Impairment",
+    "credential-access": "Credential Access",
     "discovery": "Discovery",
+    "lateral-movement": "Lateral Movement",
     "collection": "Collection",
+    "command-and-control": "Command & Control",
     "exfiltration": "Exfiltration",
     "impact": "Impact",
-    "initial_access": "Initial Access",
 }
+
+
+def norm_tactic(token: str) -> str:
+    token = token.lower().replace("_", "-")
+    return TACTIC_ALIASES.get(token, token)
 
 GH_BASE = "https://github.com/canmenzo/detection-engineering/blob/main/"
 
@@ -54,8 +66,10 @@ def vendored_summary() -> dict:
         return {}
     try:
         return json.loads(VENDORED_REPORT.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}
+    except (json.JSONDecodeError, OSError) as exc:
+        # An absent report is a legitimate state (vendored_report.py not run yet);
+        # a corrupt one silently drops the whole vendored tier off the dashboard.
+        raise SystemExit(f"{VENDORED_REPORT}: unreadable: {exc}") from exc
 
 
 def conversion_only() -> set[str]:
@@ -83,10 +97,10 @@ def collect() -> list[dict]:
     for path in sorted(DETECTIONS.rglob("*.yml")) + sorted(DETECTIONS.rglob("*.yaml")):
         try:
             doc = yaml.safe_load(path.read_text(encoding="utf-8"))
-        except yaml.YAMLError:
-            continue
+        except yaml.YAMLError as exc:
+            raise SystemExit(f"{path}: unparseable YAML: {exc}") from exc
         if not isinstance(doc, dict):
-            continue
+            raise SystemExit(f"{path}: not a YAML mapping")
         techs, tactics = [], []
         for tag in doc.get("tags") or []:
             if not isinstance(tag, str):
@@ -96,8 +110,8 @@ def collect() -> list[dict]:
                 techs.append(mt.group(1).upper())
                 continue
             ma = TACTIC_RE.match(tag.strip())
-            if ma and ma.group(1).lower() in TACTIC_NAMES:
-                tactics.append(ma.group(1).lower())
+            if ma and (tac := norm_tactic(ma.group(1))) in TACTIC_NAMES:
+                tactics.append(tac)
         stem = path.stem
         n = sample_count(stem)
         if n:
