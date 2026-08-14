@@ -1,0 +1,70 @@
+[project]
+name = "detkit"
+version = "0.1.0"
+description = "Tooling for a detection-as-code repository: metadata gates, ATT&CK coverage, and dashboard generation over a Sigma corpus."
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Can Ozmen" }]
+
+dependencies = [
+    "pysigma>=1.3,<2.0",
+    "sigma-cli>=3.0,<4.0",
+    "pysigma-backend-splunk>=2.1,<3.0",
+    "pysigma-backend-kusto>=1.0,<2.0", # Sentinel / Microsoft 365 Defender (KQL)
+    "pyyaml>=6.0",
+    "matplotlib>=3.8",                 # renders coverage/coverage.png
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "yamllint>=1.35",
+    "ruff>=0.16",
+    "mypy>=2.0",
+    "types-PyYAML>=6.0",
+]
+
+[project.scripts]
+detkit = "detkit.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/detkit"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W", # pycodestyle + pyflakes
+    "I",           # import sorting
+    "UP",          # pyupgrade
+    "B",           # bugbear
+    "SIM",         # simplify
+    "RUF",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Contains an embedded HTML/JS template; wrapping its lines would change the
+# bytes of the generated dashboard.
+"src/detkit/dashboard.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+# pySigma re-exports its backends through package __init__ files without
+# explicit re-export markers; strict mode rejects that for third-party code.
+module = ["matplotlib.*", "sigma.*"]
+ignore_missing_imports = true
+no_implicit_reexport = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]

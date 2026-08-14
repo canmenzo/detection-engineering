@@ -37,7 +37,7 @@ The coverage matrix shows both: **green** cells are authored + fixture-tested,
 ```
  Sigma rule (YAML)
         │
-        ├── validate_metadata.py ── every rule needs an ATT&CK tag + a fixture, or CI fails
+        ├── detkit validate ────── every rule needs a valid ATT&CK tag + a fixture, or CI fails
         │
         ├── sigma convert ──────── valid KQL (Sentinel) and SPL (Splunk) or CI fails
         │
@@ -48,16 +48,21 @@ The coverage matrix shows both: **green** cells are authored + fixture-tested,
 
 ## Run it locally
 
-```bash
-python -m venv .venv && .venv\Scripts\activate   # Windows
-pip install -r requirements.txt
+Dependencies are locked with [uv](https://docs.astral.sh/uv/); `uv sync` builds the
+exact environment CI uses, from `uv.lock`.
 
-python tools/validate_metadata.py          # metadata + fixture discipline (authored only)
-python tools/vendored_report.py            # batch convert + coverage over vendored SigmaHQ
-python tools/generate_coverage_png.py      # writes coverage/coverage.png
-python tools/generate_navigator_layer.py   # writes coverage/navigator_layer.json
-python tools/generate_dashboard.py         # writes site/index.html (the live dashboard)
-pytest -v                                   # fetches pinned samples, runs Hayabusa
+```bash
+uv sync --all-extras          # exact locked environment, incl. dev tooling
+
+uv run detkit validate        # metadata + fixture + ATT&CK tag discipline (authored only)
+uv run detkit vendored        # batch convert + coverage over the vendored SigmaHQ corpus
+uv run detkit coverage        # writes coverage/coverage.png
+uv run detkit navigator       # writes coverage/navigator_layer.json
+uv run detkit dashboard       # writes site/index.html (the live dashboard)
+
+uv run pytest -v              # unit tests + detection tests (fetches samples, runs Hayabusa)
+uv run ruff check .           # lint
+uv run mypy                   # type check (strict)
 ```
 
 Hayabusa is a single binary from [Yamato Security](https://github.com/Yamato-Security/hayabusa);
@@ -97,8 +102,9 @@ Full walkthrough in [`docs/detection_lifecycle.md`](docs/detection_lifecycle.md)
 ## Coverage
 
 The matrix at the top is rendered directly from the rule corpus by
-[`tools/generate_coverage_png.py`](tools/generate_coverage_png.py) — no external
-service needed; it regenerates on every commit.
+[`detkit coverage`](src/detkit/coverage.py) — no external service needed. CI
+regenerates every published artifact and fails if the committed copies differ,
+so the dashboard cannot drift from the repo.
 
 For an interactive view, [`coverage/navigator_layer.json`](coverage/navigator_layer.json)
 can be loaded in the [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/)

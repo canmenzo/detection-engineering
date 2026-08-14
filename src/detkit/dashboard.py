@@ -1,142 +1,72 @@
-#!/usr/bin/env python3
 """Render a self-contained static dashboard from the detection corpus.
 
-Reads detections/ + the fixture manifests + conversion_only.txt and emits a single
-HTML file (site/index.html) plus a copy of the coverage matrix. No server, no
-build step, no external assets — just open it or publish site/ on GitHub Pages.
-
-Run: python tools/generate_dashboard.py
+Emits a single HTML file (site/index.html) plus a copy of the coverage matrix.
+No server, no build step, no external assets.
 """
 from __future__ import annotations
 
 import html
 import json
-import re
 import shutil
 from collections import Counter
-from pathlib import Path
+from typing import Any
 
-import yaml
-
-REPO = Path(__file__).resolve().parents[1]
-DETECTIONS = REPO / "detections"
-FIXTURES = REPO / "tests" / "fixtures"
-CONVERSION_ONLY = REPO / "tests" / "conversion_only.txt"
-COVERAGE_PNG = REPO / "coverage" / "coverage.png"
-VENDORED_REPORT = REPO / "vendored" / "report.json"
-SITE = REPO / "site"
-OUT = SITE / "index.html"
-
-TECHNIQUE_RE = re.compile(r"^attack\.(t\d{4}(?:\.\d{3})?)$", re.IGNORECASE)
-TACTIC_RE = re.compile(r"^attack\.([a-z_-]+)$", re.IGNORECASE)
-
-# ATT&CK v19.1 shortnames. TA0005 Defense Evasion became "stealth"; TA0112
-# "defense-impairment" was split out of it.
-TACTIC_ALIASES = {"defense-evasion": "stealth"}
-
-TACTIC_NAMES = {
-    "reconnaissance": "Reconnaissance",
-    "resource-development": "Resource Development",
-    "initial-access": "Initial Access",
-    "execution": "Execution",
-    "persistence": "Persistence",
-    "privilege-escalation": "Privilege Escalation",
-    "stealth": "Stealth",
-    "defense-impairment": "Defense Impairment",
-    "credential-access": "Credential Access",
-    "discovery": "Discovery",
-    "lateral-movement": "Lateral Movement",
-    "collection": "Collection",
-    "command-and-control": "Command & Control",
-    "exfiltration": "Exfiltration",
-    "impact": "Impact",
-}
-
-
-def norm_tactic(token: str) -> str:
-    token = token.lower().replace("_", "-")
-    return TACTIC_ALIASES.get(token, token)
+from detkit.attack import TACTIC_BY_NAME
+from detkit.paths import (
+    COVERAGE_PNG,
+    DETECTIONS,
+    REPO,
+    SITE,
+    SITE_INDEX,
+    VENDORED_REPORT,
+)
+from detkit.rules import conversion_only, load_corpus, sample_count
 
 GH_BASE = "https://github.com/canmenzo/detection-engineering/blob/main/"
 
 
-def vendored_summary() -> dict:
-    """Read tools/vendored_report.py output, if present, for the vendored tier."""
+def vendored_summary() -> dict[str, Any]:
+    """Read the vendored report, if present."""
     if not VENDORED_REPORT.exists():
         return {}
     try:
-        return json.loads(VENDORED_REPORT.read_text(encoding="utf-8"))
+        data = json.loads(VENDORED_REPORT.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        # An absent report is a legitimate state (vendored_report.py not run yet);
-        # a corrupt one silently drops the whole vendored tier off the dashboard.
+        # An absent report is a legitimate state (vendored report not generated
+        # yet); a corrupt one silently drops the whole vendored tier.
         raise SystemExit(f"{VENDORED_REPORT}: unreadable: {exc}") from exc
+    return data if isinstance(data, dict) else {}
 
 
-def conversion_only() -> set[str]:
-    if not CONVERSION_ONLY.exists():
-        return set()
-    out = set()
-    for line in CONVERSION_ONLY.read_text(encoding="utf-8").splitlines():
-        line = line.split("#", 1)[0].strip()
-        if line:
-            out.add(line)
-    return out
-
-
-def sample_count(stem: str) -> int:
-    manifest = FIXTURES / stem / "sample_sources.yml"
-    if not manifest.is_file():
-        return 0
-    doc = yaml.safe_load(manifest.read_text(encoding="utf-8")) or {}
-    return len(doc.get("samples") or [])
-
-
-def collect() -> list[dict]:
-    conv = conversion_only()
-    rules = []
-    for path in sorted(DETECTIONS.rglob("*.yml")) + sorted(DETECTIONS.rglob("*.yaml")):
-        try:
-            doc = yaml.safe_load(path.read_text(encoding="utf-8"))
-        except yaml.YAMLError as exc:
-            raise SystemExit(f"{path}: unparseable YAML: {exc}") from exc
-        if not isinstance(doc, dict):
-            raise SystemExit(f"{path}: not a YAML mapping")
-        techs, tactics = [], []
-        for tag in doc.get("tags") or []:
-            if not isinstance(tag, str):
-                continue
-            mt = TECHNIQUE_RE.match(tag.strip())
-            if mt:
-                techs.append(mt.group(1).upper())
-                continue
-            ma = TACTIC_RE.match(tag.strip())
-            if ma and (tac := norm_tactic(ma.group(1))) in TACTIC_NAMES:
-                tactics.append(tac)
-        stem = path.stem
-        n = sample_count(stem)
+def collect() -> list[dict[str, Any]]:
+    exempt = conversion_only()
+    rules: list[dict[str, Any]] = []
+    for rule in load_corpus(DETECTIONS):
+        tactics = [t for t in rule.tactics if t in TACTIC_BY_NAME]
+        n = sample_count(rule.stem)
         if n:
             status = "tested"
-        elif stem in conv:
+        elif rule.stem in exempt:
             status = "conversion-only"
         else:
             status = "untested"
-        ls = doc.get("logsource") or {}
+        logsource = rule.doc.get("logsource") or {}
         rules.append({
-            "stem": stem,
-            "title": doc.get("title", stem),
-            "description": " ".join(str(doc.get("description", "")).split()),
-            "level": doc.get("level", "n/a"),
-            "tactics": sorted({TACTIC_NAMES[t] for t in tactics}),
-            "techniques": sorted(set(techs)),
-            "logsource": ls.get("service") or ls.get("category") or "windows",
+            "stem": rule.stem,
+            "title": rule.doc.get("title", rule.stem),
+            "description": " ".join(str(rule.doc.get("description", "")).split()),
+            "level": rule.doc.get("level", "n/a"),
+            "tactics": sorted({TACTIC_BY_NAME[t].label for t in tactics}),
+            "techniques": sorted(set(rule.techniques)),
+            "logsource": logsource.get("service") or logsource.get("category") or "windows",
             "status": status,
             "samples": n,
-            "path": str(path.relative_to(REPO)).replace("\\", "/"),
+            "path": str(rule.path.relative_to(REPO)).replace("\\", "/"),
         })
     return rules
 
 
-def render(rules: list[dict], vend: dict) -> str:
+def render(rules: list[dict[str, Any]], vend: dict[str, Any]) -> str:
     n_total = len(rules)
     n_tested = sum(1 for r in rules if r["status"] == "tested")
     n_samples = sum(r["samples"] for r in rules)
@@ -250,7 +180,7 @@ def render(rules: list[dict], vend: dict) -> str:
   <div id="list"></div>
 </main>
 <footer>
-  Generated by <code>tools/generate_dashboard.py</code> from the rule corpus —
+  Generated by <code>detkit dashboard</code> from the rule corpus —
   do not edit by hand. Status: <b>tested</b> = proven to fire on a pinned public
   EVTX sample via Hayabusa; <b>conversion-only</b> = validated by lint + SPL/KQL
   conversion (declared exemption); see the repo for details.
@@ -293,17 +223,12 @@ render();
 """
 
 
-def main() -> int:
+def run() -> int:
     rules = collect()
-    vend = vendored_summary()
     SITE.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(render(rules, vend), encoding="utf-8")
+    SITE_INDEX.write_text(render(rules, vendored_summary()), encoding="utf-8")
     if COVERAGE_PNG.exists():
         shutil.copyfile(COVERAGE_PNG, SITE / "coverage.png")
-    tested = sum(1 for r in rules if r["status"] == "tested")
-    print(f"Wrote {OUT.relative_to(REPO)} — {len(rules)} detections ({tested} tested).")
+    n_tested = sum(1 for r in rules if r["status"] == "tested")
+    print(f"Wrote {SITE_INDEX.relative_to(REPO)} — {len(rules)} detections ({n_tested} tested).")
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

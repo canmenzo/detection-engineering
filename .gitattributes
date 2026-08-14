@@ -1,2 +1,11 @@
+# CI runs on Linux and yamllint enforces LF, so every text file in this repo is
+# LF in the working tree too — a Windows checkout that rewrites a rule to CRLF
+# fails the lint for reasons that have nothing to do with the rule.
+* text=auto eol=lf
+
 # Vendored SigmaHQ rules: preserve upstream LF line endings verbatim.
 vendored/** text eol=lf
+
+# Binary artifacts must never be line-ending converted.
+*.png binary
+*.evtx binary

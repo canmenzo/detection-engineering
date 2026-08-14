@@ -1,4 +1,4 @@
-"""Detection unit tests.
+"""Detection tests.
 
 For each rule with a tests/fixtures/<stem>/sample_sources.yml manifest, every
 pinned sample is fetched and scanned:
@@ -7,18 +7,21 @@ pinned sample is fetched and scanned:
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
 
-from conftest import DETECTIONS, FIXTURES, fetch_sample, requires_hayabusa
+from detkit.paths import DETECTIONS, FIXTURES
+from detkit.rules import rule_paths
+from harness import fetch_sample, requires_hayabusa
 
 
-def _cases():
+def _cases() -> list[Any]:
     cases = []
-    rules = sorted(DETECTIONS.rglob("*.yml")) + sorted(DETECTIONS.rglob("*.yaml"))
-    by_stem = {r.stem: r for r in rules}
+    by_stem = {path.stem: path for path in rule_paths(DETECTIONS)}
     for manifest in sorted(FIXTURES.glob("*/sample_sources.yml")):
         stem = manifest.parent.name
         rule = by_stem.get(stem)
@@ -36,7 +39,9 @@ CASES = _cases()
 @requires_hayabusa
 @pytest.mark.skipif(not CASES, reason="no fixture manifests present")
 @pytest.mark.parametrize("rule,sample", CASES)
-def test_detection(hit_counter, rule: Path, sample: dict):
+def test_detection(
+    hit_counter: Callable[[Path, Path], int], rule: Path, sample: dict[str, Any]
+) -> None:
     evtx = fetch_sample(sample)
     hits = hit_counter(rule, evtx)
     if sample["expect"] == "fire":

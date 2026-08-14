@@ -21,15 +21,15 @@
 5. **Validate conversion.** `sigma convert` to KQL (Sentinel) and SPL (Splunk)
    using `pipelines/` proves the rule is syntactically valid against real backends.
 
-6. **Map & ship.** Regenerate the coverage artifacts (`generate_navigator_layer.py`,
-   `generate_coverage_png.py`, `generate_dashboard.py`) and commit them with the
-   rule — CI fails if the committed artifacts do not match what the generators
-   produce. Changes land on `main` and CI must be green.
+6. **Map & ship.** Regenerate the coverage artifacts (`detkit navigator`,
+   `detkit coverage`, `detkit dashboard`) and commit them with the rule — CI
+   fails if the committed artifacts do not match what the generators produce.
+   Changes land on `main` and CI must be green.
 
-The discipline gate: `validate_metadata.py` rejects any rule missing an ATT&CK
-tag or a fixture, and rejects any `attack.*` tag that does not resolve against
-the ATT&CK release pinned in `.attack-version`. No exceptions — that gate is the
-whole point.
+The discipline gate: `detkit validate` rejects any rule missing an ATT&CK tag or
+a fixture, and rejects any `attack.*` tag that does not resolve against the live
+ATT&CK release (`.attack-version` records the release last reviewed and fails the
+build on a major bump). No exceptions — that gate is the whole point.
 
 The harness gate: `tests/test_harness_integrity.py` asserts the suite actually
 ran — collected cases must equal the samples the fixture manifests declare, and
