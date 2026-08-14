@@ -54,9 +54,15 @@ jobs:
           mkdir -p hayabusa && unzip -q hayabusa.zip -d hayabusa
           # keep the binary alongside its bundled rules/config (conftest runs from here)
           BIN=$(find hayabusa -name 'hayabusa-*-lin-*' -type f | head -n1)
+          # An empty BIN here used to export a bogus HAYABUSA_BIN, every test
+          # skipped, and the build went green having verified nothing.
+          test -n "$BIN" || { echo "::error::hayabusa binary not found in release archive"; exit 1; }
           chmod +x "$BIN"
           echo "HAYABUSA_BIN=$PWD/$BIN" >> "$GITHUB_ENV"
       - name: pytest (fetches pinned samples, runs Hayabusa)
+        # Refuse to pass on skipped detection tests. See tests/conftest.py.
+        env:
+          DETKIT_REQUIRE_HAYABUSA: "1"
         run: pytest -v
 
   vendored:
@@ -89,6 +95,20 @@ jobs:
         run: python tools/vendored_report.py
       - name: render coverage matrix
         run: python tools/generate_coverage_png.py
+      - name: render dashboard
+        run: python tools/generate_dashboard.py
+      - name: committed artifacts must match what the generators produce
+        # Generator output is a pure function of the corpus (no timestamps), so a
+        # diff here means someone changed rules without regenerating and the
+        # published dashboard no longer reflects the repo. PNGs are excluded:
+        # matplotlib output is not byte-stable across versions, and a stale PNG
+        # cannot occur without these three also being stale.
+        run: |
+          git diff --exit-code -- \
+            coverage/navigator_layer.json \
+            vendored/report.json \
+            site/index.html \
+          || { echo "::error::generated artifacts are stale — run the generators and commit"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: coverage
