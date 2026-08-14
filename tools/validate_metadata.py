@@ -5,14 +5,15 @@ Hard rules, any failure breaks CI:
   1. Every rule carries the full required Sigma frontmatter, including at least
      one ATT&CK technique tag (attack.tXXXX[.XXX]).
   2. Every rule has a test-fixture directory under tests/fixtures/<rule_stem>/.
-  3. Every attack.* tag resolves against the pinned ATT&CK release: technique
-     IDs must exist, tactic tokens must be real ATT&CK shortnames.
+  3. Every attack.* tag resolves against the live ATT&CK release: technique IDs
+     must exist, tactic tokens must be real ATT&CK shortnames.
 
 On (3): pySigma resolves ATT&CK from MITRE's live STIX feed, so the vocabulary
-moves under the repo with no commit of ours. .attack-version pins the release we
-validated against; a mismatch fails here rather than silently changing what
-"valid tag" means. Bumping it is a deliberate act: update the file, re-run, fix
-whatever the new release retired.
+moves under the repo with no commit of ours — which is how this repo drifted to
+17 invalid tags unnoticed. Tags are always checked against whatever is resolved,
+so a retired technique fails by name on the next run. .attack-version records the
+release we last reviewed against and fails the build on a MAJOR bump, which is
+where techniques get retired and tactics renamed.
 
 Run: python tools/validate_metadata.py
 Exit code 0 = clean, 1 = one or more violations.
@@ -50,12 +51,19 @@ def attack_vocabulary() -> tuple[set[str], set[str]]:
     )
 
     pinned = ATTACK_VERSION_FILE.read_text(encoding="utf-8").strip()
-    if mitre_attack_version != pinned:
+    # Compare the MAJOR release only. Minor releases (19.1 -> 19.2) are content
+    # updates that ship every few weeks; failing on those would just train us to
+    # bump the file without looking. Major releases are the ones that retire
+    # techniques and rename tactics, which is what actually broke this repo.
+    # Either way the per-tag check below runs against whatever was resolved, so a
+    # retired tag fails by name regardless of the version.
+    if mitre_attack_version.split(".")[0] != pinned.split(".")[0]:
         raise SystemExit(
-            f"ATT&CK version drift: .attack-version pins {pinned!r} but pySigma "
-            f"resolved {mitre_attack_version!r}.\n"
-            f"MITRE published a new release. Re-validate the rule tags against it, "
-            f"then update .attack-version to {mitre_attack_version!r}."
+            f"ATT&CK major version drift: .attack-version records {pinned!r} but "
+            f"pySigma resolved {mitre_attack_version!r}.\n"
+            f"A major ATT&CK release retires techniques and renames tactics. "
+            f"Re-validate every rule tag against it, then update .attack-version "
+            f"to {mitre_attack_version!r}."
         )
     return set(mitre_attack_techniques), set(mitre_attack_tactics.values())
 
@@ -142,9 +150,12 @@ def main() -> int:
         print("no detection rules found under detections/", file=sys.stderr)
         return 1
 
+    from sigma.data.mitre_attack import mitre_attack_version
+
     techniques, tactics = attack_vocabulary()
-    print(f"ATT&CK {ATTACK_VERSION_FILE.read_text(encoding='utf-8').strip()} "
-          f"({len(techniques)} techniques, {len(tactics)} tactics)\n")
+    reviewed = ATTACK_VERSION_FILE.read_text(encoding="utf-8").strip()
+    print(f"ATT&CK {mitre_attack_version} resolved (last reviewed against "
+          f"{reviewed}) — {len(techniques)} techniques, {len(tactics)} tactics\n")
 
     failed = 0
     for rule in rules:
