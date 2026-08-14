@@ -65,6 +65,29 @@ download a release and point `HAYABUSA_BIN` at it (keep it next to its bundled
 `rules/config`). Tests download pinned public EVTX samples on first run and cache
 them locally — see [`docs/adr/0002`](docs/adr/0002-fetch-pinned-samples.md).
 
+Without Hayabusa the detection tests skip so you can still work on the tooling;
+the harness-integrity tests always run. CI sets `DETKIT_REQUIRE_HAYABUSA=1`,
+which turns any skip into a build failure — a detection suite that did not
+execute must never report green.
+
+## Known gaps
+
+Stated plainly, because a reviewer will find them anyway:
+
+- **Detection quality is not measured yet.** Tests assert only that a rule fires
+  on an attack sample and stays silent on a benign one. There is no precision,
+  recall or false-positive rate per rule, and 14 of 15 rules currently have no
+  benign counter-example at all. An eval harness over labelled events is the
+  next piece of work.
+- **`sigma check` is advisory, not a gate.** Two rules use `service: security`
+  with raw EID 4688 fields instead of the generic `process_creation` logsource,
+  because Hayabusa maps that category to Sysmon EID 1 and will not match the
+  public 4688 samples. Until that is resolved the check runs and prints, but does
+  not fail the build. It will, once the count is zero.
+- **Converted SPL/KQL is validated for syntax, not deployability.** The pipelines
+  only field-map `process_creation` rules, so most output carries raw Windows
+  field names and no index/table binding. It parses; it is not drop-in.
+
 ## The detection lifecycle
 
 Hypothesis → Sigma rule → EVTX fixtures (TP + benign) → tested with Hayabusa →
