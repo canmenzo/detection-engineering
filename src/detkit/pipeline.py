@@ -31,6 +31,7 @@ STEPS: tuple[tuple[str, Sequence[str]], ...] = (
     ("navigator layer", ("detkit", "navigator")),
     ("coverage matrix", ("detkit", "coverage")),
     ("dashboard", ("detkit", "dashboard")),
+    ("readme numbers", ("detkit", "readme")),
 )
 
 DRIFT_PATHS = (
@@ -38,6 +39,7 @@ DRIFT_PATHS = (
     "vendored/report.json",
     "evals/results.json",
     "site/index.html",
+    "README.md",
 )
 
 

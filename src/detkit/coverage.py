@@ -83,17 +83,23 @@ def run() -> int:
     n_total_techniques = len({t for s in by_tactic.values() for t in s})
     n_vendored_only = n_total_techniques - n_authored_techniques
 
-    ax.text(0, y0 + 1.55, "Detection Coverage — MITRE ATT&CK",
-            fontsize=17, fontweight="bold", va="bottom")
+    # The headline is the authored corpus. The vendored tier is real work — 2,399
+    # rules run through conversion at scale — but it is other people's detection
+    # content, and leading with the combined number invites the reader to credit
+    # it here. It gets its own line, clearly labelled.
+    ax.text(0, y0 + 1.55,
+            f"Detection Coverage — {n_authored_techniques} ATT&CK techniques authored "
+            f"and fixture-tested",
+            fontsize=16, fontweight="bold", va="bottom")
     ax.text(0, y0 + 1.2,
-            f"{n_total_techniques} techniques across {n_cols} tactics  "
-            f"·  {n_authored_techniques} authored (fixture-tested) + "
-            f"{n_vendored_only} vendored",
+            f"{authored_scan.n_rules} authored rules, each scored against labelled "
+            f"events for precision, recall and false-positive rate",
             fontsize=10, color="#444", va="bottom")
     ax.text(0, y0 + 0.92,
-            f"{authored_scan.n_rules} authored rules  ·  "
-            f"{vendored_scan.n_rules} vendored SigmaHQ rules",
-            fontsize=9, color="#777", va="bottom")
+            f"Shaded cells: {n_vendored_only} further techniques covered only by the "
+            f"vendored SigmaHQ corpus ({vendored_scan.n_rules} third-party rules, "
+            f"not authored here and not fixture-tested)",
+            fontsize=8.5, color="#8a8a8a", va="bottom")
 
     for ci, column in enumerate(columns):
         techniques = by_tactic[column.shortname]
@@ -122,9 +128,9 @@ def run() -> int:
 
     legend = [
         mpatches.Patch(facecolor=AUTHORED_COLOUR, edgecolor="#1a6e2e",
-                       label="Authored — ATT&CK-mapped + fixture-tested"),
+                       label="Authored here — ATT&CK-mapped, fixture-tested, eval-scored"),
         mpatches.Patch(facecolor=blues(0.65), edgecolor="white",
-                       label="Vendored — SigmaHQ corpus (shade = # rules)"),
+                       label="Vendored SigmaHQ — third-party, convert-tested only"),
     ]
     ax.legend(handles=legend, loc="lower left", bbox_to_anchor=(0, -0.04),
               frameon=False, fontsize=8.5, ncol=2, handlelength=1.2)

@@ -4,12 +4,13 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Sequence
 
-from detkit import coverage, dashboard, hayabusa, navigator, pipeline, validate, vendored
+from detkit import coverage, dashboard, hayabusa, navigator, pipeline, readme, validate, vendored
 from detkit.attack import AttackDriftError
 from detkit.evaluation import runner as evaluation
 from detkit.evaluation.cases import CaseError
 from detkit.evaluation.engine import EvaluationError
 from detkit.hayabusa import HayabusaError
+from detkit.readme import ReadmeError
 from detkit.rules import RuleError
 
 COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
@@ -21,6 +22,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "navigator": (navigator.run, "write coverage/navigator_layer.json"),
     "coverage": (coverage.run, "render coverage/coverage.png"),
     "dashboard": (dashboard.run, "render site/index.html"),
+    "readme": (readme.run, "inject the measured eval table into README.md"),
 }
 
 
@@ -34,7 +36,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     run, _ = COMMANDS[args.command]
     try:
         return run()
-    except (AttackDriftError, RuleError, CaseError, EvaluationError, HayabusaError) as exc:
+    except (
+        AttackDriftError, RuleError, CaseError, EvaluationError, HayabusaError, ReadmeError
+    ) as exc:
         print(exc)
         return 1
 

@@ -166,6 +166,7 @@ jobs:
           uv run detkit navigator
           uv run detkit coverage
           uv run detkit dashboard
+          uv run detkit readme
       - name: committed artifacts must match what the generators produce
         # Generator output is a pure function of the corpus (no timestamps), so a
         # diff here means someone changed rules without regenerating and the
@@ -178,6 +179,7 @@ jobs:
             vendored/report.json \
             evals/results.json \
             site/index.html \
+            README.md \
           || { echo "::error::generated artifacts are stale — run the generators and commit"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:

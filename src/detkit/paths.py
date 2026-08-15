@@ -24,5 +24,7 @@ NAVIGATOR_LAYER = REPO / "coverage" / "navigator_layer.json"
 SITE = REPO / "site"
 SITE_INDEX = SITE / "index.html"
 
+README = REPO / "README.md"
+
 ATTACK_VERSION_FILE = REPO / ".attack-version"
 HAYABUSA_VERSION_FILE = REPO / ".hayabusa-version"
