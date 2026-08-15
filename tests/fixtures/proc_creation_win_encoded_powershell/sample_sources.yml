@@ -1,0 +1,25 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+#
+# NEGATIVE-ONLY, deliberately. No public Sysmon EID 1 capture of an encoded
+# PowerShell command line exists; every public one is Security 4688 or
+# PowerShell 4103/4104, and Hayabusa maps the process_creation category to
+# Sysmon EID 1 only.
+#
+# What does exist is a Sysmon EID 1 capture of WMImplant spawning PowerShell
+# with an *obfuscated* (not encoded) command line. That is the most demanding
+# negative available for this rule: real, genuinely malicious PowerShell process
+# telemetry that this particular rule should still stay silent on, because it
+# detects encoding rather than obfuscation. The 4104 ScriptBlock rule is what
+# covers that sample's behaviour.
+#
+# True-positive coverage comes from the eval harness
+# (evals/proc_creation_win_encoded_powershell), which scores five encoded
+# invocations including the `-e` abbreviation.
+samples:
+  - name: negative_obfuscated_not_encoded
+    expect: silent        # Sysmon 1: powershell $env:I4Pzl|.(Get-C`ommand ...)
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-to-MITRE-Attack/TA0002-Execution/T1047-Windows Management Instrumentation/ID1-WMI spwaning PowerShell process - WMImplant.evtx
+    sha256: 675DCEACA12515DBA1763378739F3DC40984D68F3F5892A2AA1DFBE3F1C31685

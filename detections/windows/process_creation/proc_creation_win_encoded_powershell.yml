@@ -2,9 +2,15 @@ title: Encoded PowerShell Command Line
 id: 6e1d6c2f-3b8a-4c4e-9b2a-1f0c7a5d9e21
 status: experimental
 description: >
-  Detects PowerShell execution with an encoded command argument
-  (-EncodedCommand / -enc). Adversaries base64-encode commands to obfuscate
-  intent and evade command-line logging inspection.
+  Detects PowerShell execution with an encoded command argument. Adversaries
+  base64-encode commands to obfuscate intent and evade command-line inspection.
+
+  PowerShell accepts any unambiguous abbreviation of -EncodedCommand, so an
+  earlier version of this rule that listed -enc / -encodedcommand / -ec missed
+  `powershell -e <base64>` — a documented evasion, and one the eval harness
+  caught as a recall gap. The regex now accepts any -e* switch, with the
+  precision coming from the argument: at least 15 characters of base64 alphabet.
+  That length requirement is what keeps -ExecutionPolicy Bypass and friends out.
 references:
   - https://attack.mitre.org/techniques/T1059/001/
   - https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_powershell_exe
@@ -24,12 +30,11 @@ detection:
     - Image|endswith: '\powershell.exe'
     - OriginalFileName: 'PowerShell.EXE'
   selection_enc:
-    CommandLine|contains:
-      - ' -enc '
-      - ' -encodedcommand '
-      - ' -ec '
+    CommandLine|re: '\s-e[a-z]*\s+[A-Za-z0-9+/=]{15,}'
   condition: selection_img and selection_enc
 falsepositives:
-  - Legitimate administrative scripts and software deployment tools that pass
-    encoded commands. Baseline before enabling at high severity.
+  - A PowerShell command line that passes a long base64-like value to an inner
+    tool's -e switch (docker -e, for example) will match. Baseline by parent
+    process.
+  - Software deployment tools that legitimately pass encoded commands.
 level: high
