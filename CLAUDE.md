@@ -73,13 +73,16 @@ All six phases are ✅ done: honest gates → Python foundation → eval harness
 rule quality + CI gating → reproducible setup → README/dashboard.
 
 **Remaining follow-ups (none blocking):**
-- Dashboard does not yet show per-rule eval metrics; `site/index.html` still
-  shows fixture status only. The data is in `evals/results.json`.
-- The scratchpad probe loop (`spike_crosscheck.py`: evtx_dump → flatten →
-  SQLite) is still not in the repo as `detkit probe`. It is how every rule's
-  discriminators were written against real EVTX; without it that workflow is
-  unreproducible.
-- Branch protection is not enabled (see below).
+- Branch protection is not enabled (see below) — awaiting Can's call.
+- `posh_ps_susp_encoded_powershell_scriptblock` was demoted to `informational`
+  on my initiative; Can has not confirmed or vetoed.
+
+**Rule-authoring loop:** `detkit probe <rule_stem>` fetches the pinned EVTX,
+runs the rule's compiled SQL against it, and prints matches — or, when a rule
+that should fire does not, the fields of events carrying the referenced fields.
+Use it **before** finalising rule logic. It replaced a scratchpad script plus a
+hand-downloaded evtx_dump; the `evtx` PyPI package is the same Rust parser and
+locks like any other dependency, so don't reintroduce the binary.
 
 ## Phase 1 hardening — what changed and why
 - **The suite could not fail.** No Hayabusa → all tests skipped → `pytest` exit 0.
