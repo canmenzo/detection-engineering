@@ -5,6 +5,7 @@ import argparse
 from collections.abc import Callable, Sequence
 
 from detkit import (
+    convert,
     coverage,
     dashboard,
     hayabusa,
@@ -16,6 +17,7 @@ from detkit import (
     vendored,
 )
 from detkit.attack import AttackDriftError
+from detkit.convert import ConversionError
 from detkit.evaluation import runner as evaluation
 from detkit.evaluation.cases import CaseError
 from detkit.evaluation.engine import EvaluationError
@@ -28,6 +30,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "ci": (pipeline.run, "run every gate in one go, the way CI does"),
     "validate": (validate.run, "metadata + fixture + ATT&CK tag discipline (authored rules)"),
     "eval": (evaluation.run, "score every rule against its labelled events"),
+    "convert": (convert.run, "compile to Splunk + XDR and check every query is bound"),
     "hayabusa": (hayabusa.run, "install the pinned Hayabusa release, checksum-verified"),
     "vendored": (vendored.run, "batch convert + coverage report over the vendored corpus"),
     "navigator": (navigator.run, "write coverage/navigator_layer.json"),
@@ -63,7 +66,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run()
     except (
         AttackDriftError, RuleError, CaseError, EvaluationError, HayabusaError,
-        ReadmeError, SampleError,
+        ReadmeError, SampleError, ConversionError,
     ) as exc:
         print(exc)
         return 1
