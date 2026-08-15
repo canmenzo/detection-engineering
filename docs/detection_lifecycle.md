@@ -8,6 +8,13 @@
    full metadata, including at least one `attack.tXXXX` tag. Follow the
    `<logsource>_<platform>_<short_description>.yml` naming convention.
 
+2b. **Probe the real telemetry before finalising the logic.** `detkit probe
+   <rule_stem>` parses the pinned EVTX, runs the rule's compiled SQL against it,
+   and prints the matching events — or, when it should have matched and did not,
+   the fields of the events that carry the referenced fields. Every discriminator
+   in this repo was written this way. Writing a rule against imagined telemetry
+   is how you end up with one that passes your own tests and misses the attack.
+
 3. **Pin test samples.** Create `tests/fixtures/<rule_stem>/sample_sources.yml`
    listing public EVTX samples by `repo + commit + path + sha256`, each tagged
    `expect: fire` (true positive) or `expect: silent` (must not fire). Samples

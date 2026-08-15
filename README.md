@@ -104,6 +104,7 @@ uv run detkit coverage        # writes coverage/coverage.png
 uv run detkit navigator       # writes coverage/navigator_layer.json
 uv run detkit dashboard       # writes site/index.html (the live dashboard)
 uv run detkit hayabusa        # install the pinned Hayabusa release
+uv run detkit probe <rule>    # run a rule against its pinned EVTX and show the hits
 
 uv run pytest -v              # unit tests + detection tests (fetches samples, runs Hayabusa)
 uv run ruff check .           # lint
