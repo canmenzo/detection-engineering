@@ -1,1 +1,11 @@
-3.9.0
+# Hayabusa release used by the EVTX test layer, and the SHA-256 of each release
+# archive. Bump the version here and nowhere else; CI and the local installer
+# both read this file. An unverified binary download is not a reproducible build.
+version: 3.9.0
+archives:
+  linux:
+    asset: hayabusa-3.9.0-lin-x64-gnu.zip
+    sha256: FFB31E02BD47D840D999D964D4663287CDB194A22EA856904348786ACBA414D7
+  windows:
+    asset: hayabusa-3.9.0-win-x64.zip
+    sha256: CF3A1DE0E7819DBCEF5061632DAB25B6DC344D828BA6BFDF6F2EF80BA7299EAB

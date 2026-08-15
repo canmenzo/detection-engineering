@@ -55,13 +55,27 @@ exact environment CI uses, from `uv.lock`.
 
 ```bash
 uv sync --all-extras          # exact locked environment, incl. dev tooling
+uv run detkit ci              # everything, in CI's order
+```
 
+`detkit ci` installs the pinned Hayabusa release (verified against the SHA-256 in
+`.hayabusa-version` — an unverified binary download is not a reproducible build),
+then runs lint, type check, YAML lint, `sigma check`, the rule-discipline gate,
+the full test suite, the detection-quality eval, every generator, and finally
+checks that the committed artifacts still match what the generators produce. It
+is the same sequence CI runs, just serial instead of parallel. Or open the repo
+in the devcontainer, which does the setup for you.
+
+Individual steps:
+
+```bash
 uv run detkit validate        # metadata + fixture + ATT&CK tag discipline (authored only)
 uv run detkit eval            # precision / recall / FP rate per rule
 uv run detkit vendored        # batch convert + coverage over the vendored SigmaHQ corpus
 uv run detkit coverage        # writes coverage/coverage.png
 uv run detkit navigator       # writes coverage/navigator_layer.json
 uv run detkit dashboard       # writes site/index.html (the live dashboard)
+uv run detkit hayabusa        # install the pinned Hayabusa release
 
 uv run pytest -v              # unit tests + detection tests (fetches samples, runs Hayabusa)
 uv run ruff check .           # lint
