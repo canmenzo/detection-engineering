@@ -15,6 +15,7 @@ from detkit.attack import TACTIC_BY_NAME
 from detkit.paths import (
     COVERAGE_PNG,
     DETECTIONS,
+    EVAL_RESULTS,
     REPO,
     SITE,
     SITE_INDEX,
@@ -38,8 +39,21 @@ def vendored_summary() -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
+def eval_metrics() -> dict[str, Any]:
+    """Per-rule scores from the last `detkit eval`, if it has been run."""
+    if not EVAL_RESULTS.exists():
+        return {}
+    try:
+        data = json.loads(EVAL_RESULTS.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise SystemExit(f"{EVAL_RESULTS}: unreadable: {exc}") from exc
+    rules = data.get("rules")
+    return rules if isinstance(rules, dict) else {}
+
+
 def collect() -> list[dict[str, Any]]:
     exempt = conversion_only()
+    metrics = eval_metrics()
     rules: list[dict[str, Any]] = []
     for rule in load_corpus(DETECTIONS):
         tactics = [t for t in rule.tactics if t in TACTIC_BY_NAME]
@@ -62,6 +76,7 @@ def collect() -> list[dict[str, Any]]:
             "status": status,
             "samples": n,
             "path": str(rule.path.relative_to(REPO)).replace("\\", "/"),
+            "metrics": metrics.get(rule.stem, {}),
         })
     return rules
 
@@ -78,7 +93,13 @@ def render(rules: list[dict[str, Any]], vend: dict[str, Any]) -> str:
     vend_conv = vend.get("convert", {}) or {}
     vend_rate = vend_conv.get("rate")
     vend_rate_pct = f"{100 * vend_rate:.0f}%" if vend_rate is not None else "—"
-    total_tech = len(set(techniques) | set(vend.get("techniques", [])))
+    vend_tech = len(set(vend.get("techniques", [])) - set(techniques))
+
+    scored = [r for r in rules if r["metrics"]]
+    n_cases = sum(
+        r["metrics"]["tp"] + r["metrics"]["fp"] + r["metrics"]["fn"] + r["metrics"]["tn"]
+        for r in scored
+    )
 
     data_json = json.dumps(rules)
     chips = "".join(
@@ -133,6 +154,13 @@ def render(rules: list[dict[str, Any]], vend: dict[str, Any]) -> str:
   .card h3 a {{ color:var(--fg); text-decoration:none; }}
   .card h3 a:hover {{ color:var(--accent); }}
   .desc {{ color:var(--muted); font-size:13.5px; margin:6px 0 10px; }}
+  .metrics {{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 10px; }}
+  .metric {{ font-size:11.5px; padding:3px 9px; border-radius:6px; font-weight:600;
+             border:1px solid var(--line); color:var(--fg); font-variant-numeric:tabular-nums; }}
+  .metric.good {{ background:#23863626; color:var(--ok); border-color:#2386362e; }}
+  .metric.warn {{ background:#9e6a0326; color:var(--warn); border-color:#9e6a032e; }}
+  .metric.bad {{ background:#da363326; color:#ff7b72; border-color:#da36332e; }}
+  .metric.muted {{ color:var(--muted); font-weight:400; }}
   .tags {{ display:flex; gap:6px; flex-wrap:wrap; }}
   .tag {{ font-size:12px; padding:2px 8px; border-radius:6px;
           border:1px solid var(--line); color:var(--muted); }}
@@ -152,26 +180,34 @@ def render(rules: list[dict[str, Any]], vend: dict[str, Any]) -> str:
 <body>
 <header>
   <h1>Detection Coverage</h1>
-  <div class="sub">Detection-as-Code — every <b>authored</b> rule version-controlled,
-    ATT&amp;CK-mapped, and unit-tested against real adversary telemetry. The wider
-    <b>vendored</b> SigmaHQ corpus is run through the same conversion pipelines and
-    folded into the coverage map below.
+  <div class="sub">Detection-as-Code — every authored rule is version-controlled,
+    ATT&amp;CK-mapped, tested against real adversary telemetry, and <b>scored for
+    precision, recall and false-positive rate</b> against labelled events. Rules
+    that miss the bar they declare fail the build.
     <a href="{GH_BASE}README.md">View source on GitHub →</a></div>
   <div class="stats">
     <div class="stat"><b>{n_total}</b><span>authored detections</span></div>
-    <div class="stat"><b>{n_tested}</b><span>fixture-tested</span></div>
+    <div class="stat"><b>{len(techniques)}</b><span>ATT&amp;CK techniques authored</span></div>
+    <div class="stat"><b>{len(scored)}</b><span>scored for precision/recall</span></div>
+    <div class="stat"><b>{n_cases}</b><span>labelled eval events</span></div>
+    <div class="stat"><b>{n_tested}</b><span>fixture-tested on real EVTX</span></div>
     <div class="stat"><b>{n_samples}</b><span>pinned EVTX samples</span></div>
-    <div class="stat alt"><b>{vend_rules:,}</b><span>vendored SigmaHQ rules</span></div>
-    <div class="stat alt"><b>{vend_rate_pct}</b><span>vendored convert rate</span></div>
-    <div class="stat"><b>{total_tech}</b><span>ATT&amp;CK techniques</span></div>
+  </div>
+  <div class="sub" style="font-size:13px;margin-top:-6px">
+    Separately, a pinned copy of the public SigmaHQ Windows corpus
+    (<b>{vend_rules:,}</b> third-party rules, {vend_rate_pct} convert rate) is run
+    through the same conversion pipeline and adds <b>{vend_tech}</b> further
+    techniques to the map below. That corpus is not authored here and is not
+    held to the fixture or eval gates.
   </div>
 </header>
 <main>
   {cov_img}
   <h2>Authored detections</h2>
-  <div class="h2sub">My own rules — each ATT&amp;CK-mapped and proven against real
-    adversary EVTX via Hayabusa. The {vend_rules:,} vendored SigmaHQ rules are not
-    listed individually; they drive the coverage map above.</div>
+  <div class="h2sub">My own rules. Read <b>FP rate</b> first: precision moves with
+    the malicious-to-benign ratio in each case set, which is authored rather than
+    observed, while FP rate and recall do not. The {vend_rules:,} vendored SigmaHQ
+    rules are not listed here; they only feed the coverage map above.</div>
   <div class="controls">
     <input type="search" id="q" placeholder="Search detections…">
     <button class="chip active" data-tactic="">All <span>{n_total}</span></button>
@@ -191,6 +227,21 @@ const list = document.getElementById('list');
 const q = document.getElementById('q');
 let tactic = '';
 function esc(s){{ return (s||'').replace(/[&<>"]/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c])); }}
+function pct(v){{ return v === null || v === undefined ? 'n/a' : v.toFixed(2); }}
+function metrics(r){{
+  const m = r.metrics;
+  if (!m || m.precision === undefined) return '';
+  // FP rate leads: precision moves with the authored malicious:benign ratio,
+  // FP rate and recall do not.
+  const noisy = m.fp_rate !== null && m.fp_rate >= 1.0;
+  const miss  = m.recall !== null && m.recall < 1.0;
+  return `<div class="metrics">
+    <span class="metric ${{noisy ? 'bad' : 'good'}}">FP rate ${{pct(m.fp_rate)}}</span>
+    <span class="metric ${{miss ? 'warn' : 'good'}}">recall ${{pct(m.recall)}}</span>
+    <span class="metric">precision ${{pct(m.precision)}}</span>
+    <span class="metric muted">${{m.tp + m.fp + m.fn + m.tn}} labelled events</span>
+  </div>`;
+}}
 function render(){{
   const term = q.value.trim().toLowerCase();
   const rows = RULES.filter(r =>
@@ -205,6 +256,7 @@ function render(){{
       </div>
       <div class="lvl ${{r.level}}">${{esc(r.level)}} · ${{esc(r.logsource)}}</div>
       <div class="desc">${{esc(r.description)}}</div>
+      ${{metrics(r)}}
       <div class="tags">
         ${{r.tactics.map(t=>`<span class="tag">${{esc(t)}}</span>`).join('')}}
         ${{r.techniques.map(t=>`<span class="tag tech">${{esc(t)}}</span>`).join('')}}
