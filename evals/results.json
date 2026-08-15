@@ -40,6 +40,25 @@
         "max_fp_rate": 0.7
       }
     },
+    "proc_creation_win_certutil_download_decode": {
+      "tp": 4,
+      "fp": 2,
+      "fn": 0,
+      "tn": 4,
+      "precision": 0.6667,
+      "recall": 1.0,
+      "fp_rate": 0.3333,
+      "missed": [],
+      "false_alarms": [
+        "pki_script_encodes_request",
+        "sccm_decodes_policy_blob"
+      ],
+      "thresholds": {
+        "min_precision": 0.6,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.4
+      }
+    },
     "proc_creation_win_encoded_powershell": {
       "tp": 4,
       "fp": 0,
@@ -56,6 +75,24 @@
         "min_precision": 0.9,
         "min_recall": 0.8,
         "max_fp_rate": 0.1
+      }
+    },
+    "proc_creation_win_firewall_disabled_netsh": {
+      "tp": 3,
+      "fp": 1,
+      "fn": 0,
+      "tn": 6,
+      "precision": 0.75,
+      "recall": 1.0,
+      "fp_rate": 0.1429,
+      "missed": [],
+      "false_alarms": [
+        "disable_firewall_rule_not_firewall"
+      ],
+      "thresholds": {
+        "min_precision": 0.7,
+        "min_recall": 1.0,
+        "max_fp_rate": 0.2
       }
     },
     "proc_creation_win_impacket_wmiexec_output": {
@@ -92,25 +129,6 @@
         "max_fp_rate": 0.3
       }
     },
-    "security_win_certutil_download_decode": {
-      "tp": 4,
-      "fp": 2,
-      "fn": 0,
-      "tn": 4,
-      "precision": 0.6667,
-      "recall": 1.0,
-      "fp_rate": 0.3333,
-      "missed": [],
-      "false_alarms": [
-        "pki_script_encodes_request",
-        "sccm_decodes_policy_blob"
-      ],
-      "thresholds": {
-        "min_precision": 0.6,
-        "min_recall": 1.0,
-        "max_fp_rate": 0.4
-      }
-    },
     "security_win_dcsync_replication": {
       "tp": 3,
       "fp": 0,
@@ -144,24 +162,6 @@
         "min_precision": 0.55,
         "min_recall": 1.0,
         "max_fp_rate": 1.0
-      }
-    },
-    "security_win_firewall_disabled_netsh": {
-      "tp": 3,
-      "fp": 1,
-      "fn": 0,
-      "tn": 5,
-      "precision": 0.75,
-      "recall": 1.0,
-      "fp_rate": 0.1667,
-      "missed": [],
-      "false_alarms": [
-        "disable_firewall_rule_not_firewall"
-      ],
-      "thresholds": {
-        "min_precision": 0.7,
-        "min_recall": 1.0,
-        "max_fp_rate": 0.2
       }
     },
     "security_win_kerberoasting_rc4_request": {

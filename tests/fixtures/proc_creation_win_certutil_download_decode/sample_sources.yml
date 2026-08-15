@@ -1,0 +1,13 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+#
+# Sysmon EID 1 sample. The rule was moved from `service: security` + EID 4688 to
+# the generic process_creation logsource, and Hayabusa maps that category to
+# Sysmon EID 1 only — so the previous 4688 sample no longer applies here.
+samples:
+  - name: true_positive
+    expect: fire          # Sysmon 1: certutil.exe -urlcache -split -f http://.../calc.exe
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: YamatoSecurity/Sysmon/Sysmon-27-BlockExeWrite_AbusingCertutil.evtx
+    sha256: 4A6E0C25CD24048E60682AA4FA0D0BE629CCD55859429532557BE121AEDFB72F

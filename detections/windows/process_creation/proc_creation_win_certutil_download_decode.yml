@@ -1,0 +1,44 @@
+title: Certutil Download or Decode via Command Line
+id: 5e1b8c47-2a9d-4c63-b7f1-6d3e9a2c5b08
+status: experimental
+description: >
+  Detects certutil.exe used as a living-off-the-land download/decode utility:
+  -urlcache / -verifyctl to pull a remote file, or -decode/-encode to unpack a
+  staged payload. Certutil is a signed Microsoft binary, so attackers abuse it to
+  retrieve and deobfuscate tooling while blending into normal admin activity.
+
+  Authored against the generic process_creation logsource rather than a specific
+  event ID, so the processing pipeline decides whether it renders against Sysmon
+  EID 1, Security EID 4688 or a cloud EDR table. OriginalFileName is matched
+  alongside Image so a renamed binary still hits.
+references:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://attack.mitre.org/techniques/T1140/
+  - https://lolbas-project.github.io/lolbas/Binaries/Certutil/
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-08-15
+tags:
+  - attack.command-and-control
+  - attack.stealth
+  - attack.t1105
+  - attack.t1140
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+    - Image|endswith: '\certutil.exe'
+    - OriginalFileName: 'CertUtil.exe'
+  selection_flags:
+    CommandLine|contains:
+      - 'urlcache'
+      - 'verifyctl'
+      - 'decode'
+      - 'encode'
+  condition: selection_img and selection_flags
+falsepositives:
+  - Certificate enrolment scripts that legitimately use certutil -encode/-decode.
+    Baseline by parent process and the URL/file argument.
+  - Management agents unpacking signed policy blobs with -decode.
+level: high

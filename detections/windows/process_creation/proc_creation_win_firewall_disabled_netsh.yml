@@ -1,0 +1,43 @@
+title: Windows Firewall Disabled via Netsh
+id: 9c4f1a83-2d6b-4e57-8a39-5b7c2e1d6f94
+status: experimental
+description: >
+  Detects use of netsh.exe to turn off Windows Defender Firewall:
+  'netsh advfirewall set <profile> state off' or 'netsh firewall set ...
+  disable'. Adversaries disable the host firewall to enable inbound C2, lateral
+  movement, or tool transfer.
+
+  Authored against the generic process_creation logsource rather than a specific
+  event ID, so the processing pipeline decides which telemetry it renders
+  against.
+references:
+  - https://attack.mitre.org/techniques/T1686/003/
+  - https://lolbas-project.github.io/lolbas/Binaries/Netsh/
+author: Can Ozmen
+date: 2026-06-24
+modified: 2026-08-15
+tags:
+  - attack.defense-impairment
+  - attack.t1686.003
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+    - Image|endswith: '\netsh.exe'
+    - OriginalFileName: 'netsh.exe'
+  sel_state_off:
+    CommandLine|contains|all:
+      - 'state'
+      - 'off'
+  sel_firewall_disable:
+    CommandLine|contains|all:
+      - 'firewall'
+      - 'disable'
+  condition: selection_img and 1 of sel_*
+falsepositives:
+  - Administrators or imaging scripts toggling firewall profiles during setup.
+    Baseline by parent process and account.
+  - Disabling a single firewall rule (netsh advfirewall firewall set rule ...
+    disable) shares both keywords with the malicious pattern and will fire.
+level: high

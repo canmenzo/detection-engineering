@@ -1,0 +1,33 @@
+name: splunk-sysmon-source
+priority: 30
+transformations:
+  # The vendor splunk_windows pipeline binds Windows *service* logsources to a
+  # WinEventLog source, but leaves generic categories unbound. An unbound Splunk
+  # search runs against every index the user can read, which is not a detection.
+  # Chain this after splunk_windows to pin process_creation rules to Sysmon.
+  - id: sysmon_operational_source
+    type: add_condition
+    conditions:
+      source: 'WinEventLog:Microsoft-Windows-Sysmon/Operational'
+    rule_conditions:
+      - type: logsource
+        product: windows
+        category: process_creation
+
+  - id: sysmon_operational_source_process_access
+    type: add_condition
+    conditions:
+      source: 'WinEventLog:Microsoft-Windows-Sysmon/Operational'
+    rule_conditions:
+      - type: logsource
+        product: windows
+        category: process_access
+
+  - id: powershell_operational_source
+    type: add_condition
+    conditions:
+      source: 'WinEventLog:Microsoft-Windows-PowerShell/Operational'
+    rule_conditions:
+      - type: logsource
+        product: windows
+        category: ps_script

@@ -36,8 +36,7 @@ jobs:
       - name: yamllint rules
         run: uv run yamllint detections/
       - name: sigma check
-        # Advisory until the last logsource issues are resolved; see README.
-        run: uv run sigma check detections/
+        run: uv run sigma check --fail-on-issues detections/
       - name: metadata + fixture + ATT&CK tag discipline
         run: uv run detkit validate
 
@@ -53,9 +52,29 @@ jobs:
       - name: convert to Splunk SPL
         run: |
           mkdir -p out
-          uv run sigma convert -t splunk -p pipelines/splunk.yml detections/ -o out/splunk.spl
-      - name: convert to Sentinel KQL
-        run: uv run sigma convert -t kusto -p pipelines/sentinel.yml detections/ -o out/sentinel.kql
+          uv run sigma convert -t splunk \
+            -p splunk_windows -p pipelines/splunk_sysmon_source.yml \
+            detections/ -o out/splunk.spl
+      - name: every Splunk query must be bound to a source
+        # An unbound search runs against every index the user can read. Syntactic
+        # validity is not deployability, and this is the difference.
+        run: |
+          unbound=$(grep -c -v -e '^\s*$' -e 'source=' out/splunk.spl || true)
+          if [ "$unbound" -ne 0 ]; then
+            echo "::error::$unbound Splunk query/queries have no source binding"
+            grep -v -e '^\s*$' -e 'source=' out/splunk.spl
+            exit 1
+          fi
+          echo "all $(grep -c 'source=' out/splunk.spl) queries are source-bound"
+      - name: convert to Microsoft XDR KQL
+        # Only the process_creation rules. Defender XDR has no table equivalent
+        # for the Windows Security-log events the rest of the corpus targets, and
+        # Sentinel's SecurityEvent schema does not surface fields like
+        # PreAuthType — see README "Known gaps".
+        run: |
+          uv run sigma convert -t kusto -p microsoft_xdr \
+            detections/windows/process_creation -o out/xdr.kql
+          grep -q 'DeviceProcessEvents' out/xdr.kql
 
   test:
     runs-on: ubuntu-latest
