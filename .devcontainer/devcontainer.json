@@ -1,0 +1,23 @@
+{
+  "name": "detection-engineering",
+  // Pinned to the Python CI runs on. The image carries git, which the
+  // generated-artifact drift check needs.
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bookworm",
+  "postCreateCommand": "pip install --user uv && uv sync --all-extras && uv run detkit hayabusa",
+  "remoteEnv": {
+    // Never let the detection suite report success without executing.
+    "DETKIT_REQUIRE_HAYABUSA": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "redhat.vscode-yaml"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python"
+      }
+    }
+  }
+}

@@ -4,16 +4,19 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Sequence
 
-from detkit import coverage, dashboard, navigator, validate, vendored
+from detkit import coverage, dashboard, hayabusa, navigator, pipeline, validate, vendored
 from detkit.attack import AttackDriftError
 from detkit.evaluation import runner as evaluation
 from detkit.evaluation.cases import CaseError
 from detkit.evaluation.engine import EvaluationError
+from detkit.hayabusa import HayabusaError
 from detkit.rules import RuleError
 
 COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
+    "ci": (pipeline.run, "run every gate in one go, the way CI does"),
     "validate": (validate.run, "metadata + fixture + ATT&CK tag discipline (authored rules)"),
     "eval": (evaluation.run, "score every rule against its labelled events"),
+    "hayabusa": (hayabusa.run, "install the pinned Hayabusa release, checksum-verified"),
     "vendored": (vendored.run, "batch convert + coverage report over the vendored corpus"),
     "navigator": (navigator.run, "write coverage/navigator_layer.json"),
     "coverage": (coverage.run, "render coverage/coverage.png"),
@@ -31,7 +34,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     run, _ = COMMANDS[args.command]
     try:
         return run()
-    except (AttackDriftError, RuleError, CaseError, EvaluationError) as exc:
+    except (AttackDriftError, RuleError, CaseError, EvaluationError, HayabusaError) as exc:
         print(exc)
         return 1
 

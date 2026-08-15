@@ -85,18 +85,22 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked --all-extras
-      - name: install hayabusa
-        run: |
-          HV=$(cat .hayabusa-version)
-          curl -sSL -o hayabusa.zip "https://github.com/Yamato-Security/hayabusa/releases/download/v${HV}/hayabusa-${HV}-lin-x64-gnu.zip"
-          mkdir -p hayabusa && unzip -q hayabusa.zip -d hayabusa
-          # keep the binary alongside its bundled rules/config (the harness runs from here)
-          BIN=$(find hayabusa -name 'hayabusa-*-lin-*' -type f | head -n1)
-          # An empty BIN here used to export a bogus HAYABUSA_BIN, every test
-          # skipped, and the build went green having verified nothing.
-          test -n "$BIN" || { echo "::error::hayabusa binary not found in release archive"; exit 1; }
-          chmod +x "$BIN"
-          echo "HAYABUSA_BIN=$PWD/$BIN" >> "$GITHUB_ENV"
+      - name: cache pinned EVTX samples
+        # Keyed on the manifests, so a re-pinned sample invalidates the cache and
+        # an unchanged one stops hitting the network on every run.
+        uses: actions/cache@v4
+        with:
+          path: tests/.sample_cache
+          key: evtx-samples-${{ hashFiles('tests/fixtures/*/sample_sources.yml') }}
+      - name: cache hayabusa release
+        uses: actions/cache@v4
+        with:
+          path: hayabusa
+          key: hayabusa-${{ hashFiles('.hayabusa-version') }}-linux
+      - name: install hayabusa (pinned, checksum-verified)
+        # Replaces a curl + unzip + `find` guess whose empty result used to
+        # export a bogus path and degrade the whole suite to "skipped".
+        run: uv run detkit hayabusa >> "$GITHUB_ENV"
       - name: pytest (unit + detection; fetches pinned samples, runs Hayabusa)
         # Refuse to pass on skipped detection tests. See tests/harness.py.
         env:

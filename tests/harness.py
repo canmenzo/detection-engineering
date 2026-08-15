@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -21,6 +22,9 @@ import pytest
 from detkit.paths import REPO
 
 CACHE = REPO / "tests" / ".sample_cache"
+
+FETCH_ATTEMPTS = 3
+FETCH_BACKOFF_SECONDS = 2
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 HITS_RE = re.compile(r"Events with hits\s*/\s*Total events:\s*(\d+)\s*/\s*(\d+)")
@@ -64,11 +68,33 @@ def fetch_sample(sample: dict[str, Any]) -> Path:
         return dest
     quoted = urllib.parse.quote(str(sample["path"]))
     url = f"https://raw.githubusercontent.com/{sample['repo']}/{sample['commit']}/{quoted}"
-    with urllib.request.urlopen(url, timeout=60) as resp:
-        data = resp.read()
+
+    # These tests depend on a live fetch from GitHub. A transient network blip is
+    # not a detection failure, so retry with backoff — but distinguish the two in
+    # the message, or a flaky build gets blamed on the rule.
+    last: Exception | None = None
+    for attempt in range(FETCH_ATTEMPTS):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as resp:
+                data = resp.read()
+            break
+        except OSError as exc:
+            last = exc
+            if attempt < FETCH_ATTEMPTS - 1:
+                time.sleep(FETCH_BACKOFF_SECONDS * (2**attempt))
+    else:
+        raise AssertionError(
+            f"could not fetch {sample['path']} after {FETCH_ATTEMPTS} attempts: {last}\n"
+            f"This is a sample-availability problem, not a rule failure. If the "
+            f"upstream repo removed or rewrote the pinned commit, re-pin the sample."
+        )
+
     got = hashlib.sha256(data).hexdigest()
     if got != sha:
-        raise AssertionError(f"sha256 mismatch for {sample['path']}: {got} != {sha}")
+        raise AssertionError(
+            f"sha256 mismatch for {sample['path']}: {got} != {sha}\n"
+            f"The pinned sample changed upstream. Verify the new content before re-pinning."
+        )
     dest.write_bytes(data)
     return dest
 
