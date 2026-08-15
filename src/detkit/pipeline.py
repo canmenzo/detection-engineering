@@ -27,6 +27,7 @@ STEPS: tuple[tuple[str, Sequence[str]], ...] = (
     ("rule discipline", ("detkit", "validate")),
     ("pytest", (sys.executable, "-m", "pytest", "-q")),
     ("detection quality", ("detkit", "eval")),
+    ("convert + binding", ("detkit", "convert")),
     ("vendored corpus", ("detkit", "vendored")),
     ("navigator layer", ("detkit", "navigator")),
     ("coverage matrix", ("detkit", "coverage")),

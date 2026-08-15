@@ -49,32 +49,12 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked --all-extras
-      - name: convert to Splunk SPL
-        run: |
-          mkdir -p out
-          uv run sigma convert -t splunk \
-            -p splunk_windows -p pipelines/splunk_sysmon_source.yml \
-            detections/ -o out/splunk.spl
-      - name: every Splunk query must be bound to a source
+      - name: compile to Splunk + XDR, and check every query is bound
         # An unbound search runs against every index the user can read. Syntactic
-        # validity is not deployability, and this is the difference.
-        run: |
-          unbound=$(grep -c -v -e '^\s*$' -e 'source=' out/splunk.spl || true)
-          if [ "$unbound" -ne 0 ]; then
-            echo "::error::$unbound Splunk query/queries have no source binding"
-            grep -v -e '^\s*$' -e 'source=' out/splunk.spl
-            exit 1
-          fi
-          echo "all $(grep -c 'source=' out/splunk.spl) queries are source-bound"
-      - name: convert to Microsoft XDR KQL
-        # Only the process_creation rules. Defender XDR has no table equivalent
-        # for the Windows Security-log events the rest of the corpus targets, and
-        # Sentinel's SecurityEvent schema does not surface fields like
-        # PreAuthType — see README "Known gaps".
-        run: |
-          uv run sigma convert -t kusto -p microsoft_xdr \
-            detections/windows/process_creation -o out/xdr.kql
-          grep -q 'DeviceProcessEvents' out/xdr.kql
+        # validity is not deployability, and this is the difference. The check
+        # lives in detkit rather than in shell so it is unit-tested — the first
+        # version was line-based and misread a multi-line SPL query as unbound.
+        run: uv run detkit convert
 
   test:
     runs-on: ubuntu-latest
