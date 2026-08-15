@@ -12,6 +12,7 @@ dependencies = [
     "pysigma-backend-splunk>=2.1,<3.0",
     "pysigma-backend-kusto>=1.0,<2.0", # Sentinel / Microsoft 365 Defender (KQL)
     "pysigma-backend-sqlite>=1.2,<2.0", # evaluates rules over labelled events (ADR 0003)
+    "evtx>=0.8,<1.0",                   # reads pinned EVTX samples for `detkit probe`
     "pyyaml>=6.0",
     "matplotlib>=3.8",                 # renders coverage/coverage.png
 ]
