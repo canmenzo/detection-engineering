@@ -39,7 +39,7 @@ The coverage matrix shows both: **green** cells are authored + fixture-tested,
         │
         ├── detkit validate ────── every rule needs a valid ATT&CK tag + a fixture, or CI fails
         │
-        ├── sigma convert ──────── valid KQL (Sentinel) and SPL (Splunk) or CI fails
+        ├── sigma convert ──────── source-bound SPL + XDR KQL, or CI fails
         │
         ├── Hayabusa + pytest ──── TP fixture must fire, benign fixture must not
         │
@@ -136,14 +136,14 @@ Stated plainly, because a reviewer will find them anyway:
   [ADR 0003](docs/adr/0003-sql-evaluator-for-labelled-events.md).
 - **Thresholds do not gate the build yet.** The eval runs on every PR and reports;
   per-rule bars and a regression ratchet are the next piece of work.
-- **`sigma check` is advisory, not a gate.** Two rules use `service: security`
-  with raw EID 4688 fields instead of the generic `process_creation` logsource,
-  because Hayabusa maps that category to Sysmon EID 1 and will not match the
-  public 4688 samples. Until that is resolved the check runs and prints, but does
-  not fail the build. It will, once the count is zero.
-- **Converted SPL/KQL is validated for syntax, not deployability.** The pipelines
-  only field-map `process_creation` rules, so most output carries raw Windows
-  field names and no index/table binding. It parses; it is not drop-in.
+- **Sentinel coverage is partial, and that is a platform limit, not an oversight.**
+  Splunk gets all 15 rules, source-bound. Microsoft XDR gets the
+  `process_creation` subset — Defender XDR has no table equivalent for the
+  Windows Security-log events the rest of the corpus targets. Sentinel's
+  `SecurityEvent` table does not surface every field these rules use (`PreAuthType`
+  is not a column), so those rules would need per-rule `EventData` parsing before
+  they could run there. The Kusto pipeline refuses to emit a query it cannot bind
+  to a table, which is the correct behaviour.
 
 ## The detection lifecycle
 

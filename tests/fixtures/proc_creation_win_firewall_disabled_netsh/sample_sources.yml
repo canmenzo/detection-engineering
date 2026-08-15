@@ -1,0 +1,20 @@
+# Pinned public EVTX samples for this rule's tests.
+# Fetched at test time (not vendored) — see docs/adr/0002.
+#
+# NEGATIVE-ONLY, deliberately. The rule now uses the generic process_creation
+# logsource, which Hayabusa maps to Sysmon EID 1, and no public Sysmon EID 1
+# sample of a firewall being disabled exists — every public "firewall disabled"
+# capture is Security 4688 / 4950 / 2003.
+#
+# What does exist is a Sysmon EID 1 capture of netsh being used for port
+# forwarding. That is the most valuable negative available for this rule: real
+# netsh process-creation telemetry that must NOT fire it. True-positive coverage
+# comes from the eval harness (evals/proc_creation_win_firewall_disabled_netsh),
+# which scores the rule against three labelled disable-commands.
+samples:
+  - name: negative_netsh_portproxy
+    expect: silent        # Sysmon 1: netsh interface portproxy add — not a disable
+    repo: Yamato-Security/hayabusa-sample-evtx
+    commit: 0845333ecb4afcf64c55c6e10946383f168f308c
+    path: EVTX-ATTACK-SAMPLES/Defense Evasion/de_portforward_netsh_rdp_sysmon_13_1.evtx
+    sha256: 9CA0C561593FBD30956437D566E51E5E913829BA2AEC30C0D867D739D4B3F3F8

