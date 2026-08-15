@@ -7,6 +7,7 @@ semantics it pins down — all of which are implemented here.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -89,6 +90,18 @@ def normalise(value: Any) -> Any:
     return value
 
 
+def _regexp(pattern: str | None, value: Any) -> bool:
+    """SQLite's REGEXP operator, which the engine does not ship.
+
+    The Sigma `|re` modifier compiles to `field REGEXP '...'`, so without this a
+    rule using a regex would raise rather than match. Sigma regexes are
+    case-sensitive by default and unanchored, matching Hayabusa's behaviour.
+    """
+    if pattern is None or value is None:
+        return False
+    return re.search(pattern, str(value)) is not None
+
+
 def matching_indices(query: str, fields: set[str], events: list[dict[str, Any]]) -> set[int]:
     """Indices of the events the rule matches."""
     if not events:
@@ -96,6 +109,7 @@ def matching_indices(query: str, fields: set[str], events: list[dict[str, Any]])
 
     columns = sorted({key for event in events for key in event} | fields)
     conn = sqlite3.connect(":memory:")
+    conn.create_function("regexp", 2, _regexp, deterministic=True)
     try:
         quoted = ", ".join(f'"{c}"' for c in [INDEX_COLUMN, *columns])
         conn.execute(f"CREATE TABLE {TABLE} ({quoted})")

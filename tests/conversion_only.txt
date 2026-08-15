@@ -1,7 +1,10 @@
 # Rules intentionally exempt from EVTX unit testing — validated by `sigma check`
-# + SPL/KQL conversion in CI instead. List one rule stem per line with a reason.
-# This keeps the test gate honest: an exemption must be declared, not implied.
-
-# No public Sysmon EID 1 sample with `powershell -enc` exists; covered by the
-# 4104 ScriptBlock rule (posh_ps_susp_encoded_powershell_scriptblock) which IS tested.
-proc_creation_win_encoded_powershell
+# + SPL/KQL conversion and the eval harness instead. List one rule stem per line
+# with a reason. This keeps the test gate honest: an exemption must be declared,
+# not implied.
+#
+# Currently empty. Every authored rule now has at least one pinned EVTX sample.
+# Two of them are negative-only (proc_creation_win_encoded_powershell and
+# proc_creation_win_firewall_disabled_netsh) because no public Sysmon EID 1
+# capture of those behaviours exists; their manifests explain why, and their
+# true-positive coverage comes from the eval harness.

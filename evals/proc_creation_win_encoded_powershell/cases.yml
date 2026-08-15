@@ -8,14 +8,19 @@ description: >
   at the very end of a command line, or one written with an equals sign, slips
   past. Both cases are in the malicious set.
 thresholds:
-  min_recall: 0.80
+  min_precision: 0.80
+  max_fp_rate: 0.20
   justification: >-
-    Precision and FP rate hold at the default bar; recall does not. powershell.exe
-    accepts -e as an abbreviation of -EncodedCommand and the rule only tests
-    -enc/-encodedcommand/-ec, so one true positive is missed by design of the
-    current pattern. The threshold records that gap rather than hiding it; adding
-    ' -e ' would close it at the cost of matching unrelated single-letter
-    switches, which needs its own benign cases before it ships.
+    A deliberate trade, measured both ways. The previous substring version scored
+    precision 1.00 / FP 0.00 but recall 0.80, because it listed
+    -enc/-encodedcommand/-ec and PowerShell accepts any unambiguous abbreviation
+    of -EncodedCommand — so `powershell -e <base64>` walked straight past it.
+    The regex closes that evasion and takes recall to 1.00; the cost is one false
+    positive, a PowerShell command line passing a long base64-shaped value to an
+    inner tool's -e switch. Missing a known evasion is worse than an occasional
+    alert on `docker run -e`, and the residual FP is fixable by baselining the
+    parent process, whereas the recall gap was only fixable by widening the
+    switch match — which is what this is.
 
 cases:
   - name: encoded_command_hidden_window
@@ -65,9 +70,8 @@ cases:
   - name: single_letter_e_abbreviation
     label: malicious
     why: >-
-      powershell.exe accepts "-e" as an abbreviation of -EncodedCommand. The rule
-      only tests -enc, -encodedcommand and -ec, so this is a real recall gap and
-      a documented evasion. Recorded as a known miss rather than hidden.
+      powershell.exe accepts "-e" as an abbreviation of -EncodedCommand. The
+      substring version of this rule missed it; the regex closes the gap.
     event:
       EventID: 1
       Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
@@ -100,14 +104,52 @@ cases:
   - name: command_mentions_encoding_word
     label: benign
     why: >-
-      the word "encoding" appears but not as a padded switch — this is what the
-      space padding buys, and it must stay quiet
+      "-Encoding UTF8" is an -e-prefixed switch, so the switch half of the
+      pattern matches it. "UTF8" is nowhere near 15 base64 characters, which is
+      exactly what the argument requirement is for. This case holds that boundary.
     event:
       EventID: 1
       Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
       OriginalFileName: PowerShell.EXE
       CommandLine: powershell.exe -Command "Get-Content log.txt -Encoding UTF8"
       ParentImage: C:\Windows\System32\cmd.exe
+
+  - name: execution_policy_long_value
+    label: benign
+    why: >-
+      a second -e-prefixed switch with a longer argument, to prove the boundary
+      is the base64 alphabet and length rather than one lucky short word
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: powershell.exe -ExecutionPolicy Unrestricted -File C:\Scripts\install.ps1
+      ParentImage: C:\Windows\CCM\CcmExec.exe
+
+  - name: inner_tool_env_var_switch
+    label: benign
+    why: >-
+      PowerShell invoking docker, whose -e sets an environment variable to a long
+      base64-shaped value. This DOES match — the honest cost of accepting every
+      -e abbreviation. Parent-process baselining is the fix, not a narrower
+      switch list, because narrowing reopens the evasion the regex just closed.
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: >-
+        powershell.exe -Command "docker run -e APIKEYAAAABBBBCCCCDDDD1234 corp/app:latest"
+      ParentImage: C:\Windows\System32\cmd.exe
+
+  - name: encoded_word_in_a_script_path
+    label: benign
+    why: the text "encoded" inside a path, in no switch position
+    event:
+      EventID: 1
+      Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      OriginalFileName: PowerShell.EXE
+      CommandLine: powershell.exe -File C:\Scripts\parse-encoded-logs.ps1
+      ParentImage: C:\Windows\System32\taskeng.exe
 
   - name: other_binary_with_enc_switch
     label: benign
