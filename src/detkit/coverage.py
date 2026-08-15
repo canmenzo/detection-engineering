@@ -97,8 +97,8 @@ def run() -> int:
             fontsize=10, color="#444", va="bottom")
     ax.text(0, y0 + 0.92,
             f"Shaded cells: {n_vendored_only} further techniques covered only by the "
-            f"vendored SigmaHQ corpus ({vendored_scan.n_rules} third-party rules, "
-            f"not authored here and not fixture-tested)",
+            f"vendored SigmaHQ corpus ({vendored_scan.n_rules} ATT&CK-tagged third-party "
+            f"rules, not authored here and not fixture-tested)",
             fontsize=8.5, color="#8a8a8a", va="bottom")
 
     for ci, column in enumerate(columns):

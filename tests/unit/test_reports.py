@@ -64,41 +64,52 @@ def test_scan_folds_retired_tactic_token(tmp_path: Path) -> None:
     assert scan(tmp_path).pairs == {("stealth", "T1027")}
 
 
+def _card(stem: str, **overrides: object) -> dict[str, object]:
+    card: dict[str, object] = {
+        "stem": stem, "title": "Rule", "description": "d", "level": "high",
+        "tactics": ["Execution"], "techniques": ["T1059.001"], "logsource": "security",
+        "status": "tested", "samples": 1, "path": f"detections/{stem}.yml",
+        "metrics": {},
+    }
+    card.update(overrides)
+    return card
+
+
+SCORED = {
+    "tp": 4, "fp": 0, "fn": 0, "tn": 4,
+    "precision": 1.0, "recall": 1.0, "fp_rate": 0.0,
+}
+
+
 def test_render_reports_counts_and_escapes_titles() -> None:
     rules = [
-        {
-            "stem": "one", "title": "Rule <script>", "description": "d", "level": "high",
-            "tactics": ["Execution"], "techniques": ["T1059.001"], "logsource": "security",
-            "status": "tested", "samples": 2, "path": "detections/one.yml",
-        },
-        {
-            "stem": "two", "title": "Second", "description": "d", "level": "low",
-            "tactics": ["Execution"], "techniques": ["T1027"], "logsource": "security",
-            "status": "conversion-only", "samples": 0, "path": "detections/two.yml",
-        },
+        _card("one", title="Rule <script>", samples=2, metrics=SCORED),
+        _card("two", techniques=["T1027"], status="conversion-only", samples=0),
     ]
     html_out = render(rules, {"total_rules": 2399, "convert": {"rate": 1.0},
                               "techniques": ["T1105"]})
 
     assert "<b>2</b><span>authored detections</span>" in html_out
-    assert "<b>1</b><span>fixture-tested</span>" in html_out
+    assert "<b>2</b><span>ATT&amp;CK techniques authored</span>" in html_out
+    assert "<b>1</b><span>fixture-tested on real EVTX</span>" in html_out
     assert "<b>2</b><span>pinned EVTX samples</span>" in html_out
-    assert "<b>2,399</b><span>vendored SigmaHQ rules</span>" in html_out
-    assert "<b>100%</b><span>vendored convert rate</span>" in html_out
-    # 2 authored techniques + 1 vendored-only
-    assert "<b>3</b><span>ATT&amp;CK techniques</span>" in html_out
-    # The tactic chip carries its rule count.
+    # Only the rule carrying metrics counts as scored, and its cases are summed.
+    assert "<b>1</b><span>scored for precision/recall</span>" in html_out
+    assert "<b>8</b><span>labelled eval events</span>" in html_out
+    # The vendored tier is named separately, not folded into the headline stats.
+    assert "<b>2,399</b> third-party rules" in html_out
     assert 'data-tactic="Execution">Execution <span>2</span>' in html_out
 
 
 def test_render_without_vendored_report() -> None:
-    rules = [
-        {
-            "stem": "one", "title": "Rule", "description": "d", "level": "high",
-            "tactics": [], "techniques": ["T1059.001"], "logsource": "security",
-            "status": "untested", "samples": 0, "path": "detections/one.yml",
-        },
-    ]
-    html_out = render(rules, {})
-    assert "<b>—</b><span>vendored convert rate</span>" in html_out
-    assert "<b>0</b><span>vendored SigmaHQ rules</span>" in html_out
+    html_out = render([_card("one", status="untested", samples=0)], {})
+    assert "<b>0</b> third-party rules" in html_out
+    assert "—" in html_out
+
+
+def test_render_counts_only_vendored_only_techniques() -> None:
+    """A technique the authored corpus already covers is not a vendored addition."""
+    rules = [_card("one", techniques=["T1059.001"])]
+    html_out = render(rules, {"total_rules": 10, "convert": {"rate": 1.0},
+                              "techniques": ["T1059.001", "T1105"]})
+    assert "adds <b>1</b> further" in html_out

@@ -58,28 +58,28 @@ pinned in `.hayabusa-version` and read by CI — bump it there, nowhere else.
 meaning to; set `UV_PROJECT_ENVIRONMENT` to a scratch path to test the lock.
 
 ## Status
-15 authored detections, fixture-backed (pinned public EVTX) and verified with
-Hayabusa. `pytest` 20/20 (15 detection + 5 harness-integrity). Coverage:
-**306 techniques across 15 tactics** (16 authored + 290 vendored-only) — the
-vendored SigmaHQ Windows corpus converts 2399/2399 to Splunk.
+15 authored detections. **95 tests.** Every rule is scored against labelled
+events (122 of them) for precision/recall/FP rate, with per-rule thresholds that
+gate CI. `sigma check --fail-on-issues` passes at **0 issues**. All 15 rules
+convert to source-bound Splunk searches; the process_creation subset also
+converts to Microsoft XDR KQL. Coverage: 16 authored techniques (headline) plus
+290 vendored-only, across 15 tactics.
+
+**One command:** `uv sync --all-extras && uv run detkit ci` — installs the pinned
+Hayabusa, runs every gate in CI's order, ~20s.
 
 ### Production-grade engagement (6 phases, agreed 2026-08-14)
-1. ✅ **Honest gates** 2. ✅ **Python foundation** 3. ✅ **Eval harness**
-4. 🔶 **Rule quality + CI gating** — discriminators, thresholds and the PR
-template are done; the logsource/pipeline work below is NOT. 5. Reproducible
-local setup (justfile, devcontainer, pinned Hayabusa) 6. README/dashboard
-rewrite, with eval numbers injected from results.json rather than hand-typed.
+All six phases are ✅ done: honest gates → Python foundation → eval harness →
+rule quality + CI gating → reproducible setup → README/dashboard.
 
-**Phase 4 remainder (do this next):** the last 2 `sigma check` issues are
-`SpecificInsteadOfGenericLogsource` on `certutil_download_decode` and
-`firewall_disabled_netsh` — both are EID 4688 rules that should be
-`category: process_creation`. Fixing them means (a) rewriting those two rules to
-generic fields, (b) rewriting their eval cases to Sysmon-1 field names,
-(c) their Hayabusa fixtures break because Hayabusa maps process_creation to
-Sysmon EID 1 only, so they need Sysmon samples or become conversion-only, and
-(d) `pipelines/*.yml` need index/sourcetype and table binding so the converted
-SPL/KQL is actually deployable. Only then can `sigma check --fail-on-issues`
-go on. **Do not turn that flag on before the count is zero.**
+**Remaining follow-ups (none blocking):**
+- Dashboard does not yet show per-rule eval metrics; `site/index.html` still
+  shows fixture status only. The data is in `evals/results.json`.
+- The scratchpad probe loop (`spike_crosscheck.py`: evtx_dump → flatten →
+  SQLite) is still not in the repo as `detkit probe`. It is how every rule's
+  discriminators were written against real EVTX; without it that workflow is
+  unreproducible.
+- Branch protection is not enabled (see below).
 
 ## Phase 1 hardening — what changed and why
 - **The suite could not fail.** No Hayabusa → all tests skipped → `pytest` exit 0.
@@ -165,6 +165,27 @@ go on. **Do not turn that flag on before the count is zero.**
   per-branch. So "PRs for detections/** and evals/** only" is enforced by
   convention: PR template + eval gate + results published to the run summary.
   Protecting all of `main` is the only way to make it mandatory — Can's call.
+
+## Phases 5 & 6 — reproducibility and presentation
+- **`.hayabusa-version` pins the release AND each platform archive's SHA-256.**
+  `detkit hayabusa` verifies before extracting and refuses an unverified binary.
+  CI calls the same installer a human does. Never go back to `curl | unzip |
+  find` — an empty `find` is what silently degraded the suite to "skipped".
+- `detkit ci` is the single entry point and mirrors CI's order. On Windows the
+  venv's Scripts dir is not on PATH under the console script, so the runner
+  resolves each tool against `sys.executable`'s directory — don't "simplify" that
+  back to bare names.
+- **README numbers are generated.** `detkit readme` rewrites the block between
+  `<!-- detkit:eval-table:start/end -->` from `evals/results.json`, and README.md
+  is drift-checked in CI. Never hand-edit inside those markers.
+- Coverage headline is **authored-only**; the vendored count is a separate,
+  clearly-labelled line. Don't merge them back into one number.
+- Pipelines: vendor `splunk_windows` + repo `pipelines/splunk_sysmon_source.yml`
+  (binds generic categories to their Sysmon/PowerShell channels). CI fails if any
+  Splunk query lacks a `source=`. Kusto uses `microsoft_xdr` on the
+  process_creation subset only — **Sentinel's SecurityEvent schema has no
+  PreAuthType column**, so those rules cannot bind there without EventData
+  parsing. That is a platform limit, documented in the README, not a TODO.
 
 Note on logsource: Hayabusa maps `category: process_creation` to Sysmon EID 1, so
 4688 Security-log samples won't match those. Rules tested on Security-log samples
