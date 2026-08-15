@@ -58,7 +58,7 @@ pinned in `.hayabusa-version` and read by CI — bump it there, nowhere else.
 meaning to; set `UV_PROJECT_ENVIRONMENT` to a scratch path to test the lock.
 
 ## Status
-15 authored detections. **95 tests.** Every rule is scored against labelled
+15 authored detections. **111 tests.** Every rule is scored against labelled
 events (122 of them) for precision/recall/FP rate, with per-rule thresholds that
 gate CI. `sigma check --fail-on-issues` passes at **0 issues**. All 15 rules
 convert to source-bound Splunk searches; the process_creation subset also
@@ -184,8 +184,11 @@ locks like any other dependency, so don't reintroduce the binary.
 - Coverage headline is **authored-only**; the vendored count is a separate,
   clearly-labelled line. Don't merge them back into one number.
 - Pipelines: vendor `splunk_windows` + repo `pipelines/splunk_sysmon_source.yml`
-  (binds generic categories to their Sysmon/PowerShell channels). CI fails if any
-  Splunk query lacks a `source=`. Kusto uses `microsoft_xdr` on the
+  (binds generic categories to their Sysmon/PowerShell channels). `detkit convert`
+  compiles and **fails if any Splunk query lacks a `source=`**. Note an SPL query
+  can span lines — a Sigma `|re` renders as a `| regex ...` continuation — so the
+  check splits on blank lines, not newlines. A line-based version of this check
+  reported a correctly-bound rule as unbound. Kusto uses `microsoft_xdr` on the
   process_creation subset only — **Sentinel's SecurityEvent schema has no
   PreAuthType column**, so those rules cannot bind there without EventData
   parsing. That is a platform limit, documented in the README, not a TODO.
