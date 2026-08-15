@@ -76,12 +76,12 @@ jobs:
       - name: cache pinned EVTX samples
         # Keyed on the manifests, so a re-pinned sample invalidates the cache and
         # an unchanged one stops hitting the network on every run.
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: tests/.sample_cache
           key: evtx-samples-${{ hashFiles('tests/fixtures/*/sample_sources.yml') }}
       - name: cache hayabusa release
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: hayabusa
           key: hayabusa-${{ hashFiles('.hayabusa-version') }}-linux
@@ -175,7 +175,7 @@ jobs:
             site/index.html \
             README.md \
           || { echo "::error::generated artifacts are stale — run the generators and commit"; exit 1; }
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: |
